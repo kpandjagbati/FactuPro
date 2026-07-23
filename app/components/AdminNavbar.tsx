@@ -4,6 +4,7 @@ import { UserButton } from "@clerk/nextjs";
 import { LayersPlus, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import ThemeToggle from "./ThemeToggle";
 
 const links = [
   { href: "/admin", label: "Vue d'ensemble" },
@@ -41,6 +42,7 @@ export default function AdminNavbar() {
               </Link>
             ))}
           </div>
+          <ThemeToggle />
           <UserButton />
         </div>
       </div>

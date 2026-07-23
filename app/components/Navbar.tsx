@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { checkAndAddUser } from "@/app/actions";
+import ThemeToggle from "./ThemeToggle";
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
@@ -59,6 +60,7 @@ const Navbar = () => {
               </Link>
             ))}
           </div>
+          <ThemeToggle />
           <UserButton />
         </div>
       </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist } from "next/font/google";
 import RoleGate from "@/app/components/RoleGate";
+import { ThemeProvider } from "@/app/components/ThemeProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,6 +15,17 @@ export const metadata: Metadata = {
   title: "FactuPro",
   description: "SaaS de gestion de factures",
 };
+
+const themeInitScript = `
+(function () {
+  try {
+    var t = localStorage.getItem("factupro-theme");
+    if (t === "dark" || t === "fantasy") {
+      document.documentElement.setAttribute("data-theme", t);
+    }
+  } catch (e) {}
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -29,10 +41,16 @@ export default function RootLayout({
       <html
         lang="fr"
         data-theme="fantasy"
+        suppressHydrationWarning
         className={`${geistSans.variable} h-full antialiased`}
       >
-        <body className="min-h-full font-sans">
-          <RoleGate>{children}</RoleGate>
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        </head>
+        <body className="min-h-full bg-base-100 font-sans text-base-content">
+          <ThemeProvider>
+            <RoleGate>{children}</RoleGate>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>
