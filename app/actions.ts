@@ -34,6 +34,10 @@ export async function checkAndAddUser(
 ) {
   if (!clerkId || !email) return;
 
+  // Les comptes admin n'ont pas d'organisation / parcours user
+  const { isPlatformAdminEmail } = await import("@/lib/admin");
+  if (isPlatformAdminEmail(email)) return;
+
   try {
     const existingUser = await prisma.user.findUnique({
       where: { clerkId },

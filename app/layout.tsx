@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist } from "next/font/google";
+import RoleGate from "@/app/components/RoleGate";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,7 +31,9 @@ export default function RootLayout({
         data-theme="fantasy"
         className={`${geistSans.variable} h-full antialiased`}
       >
-        <body className="min-h-full font-sans">{children}</body>
+        <body className="min-h-full font-sans">
+          <RoleGate>{children}</RoleGate>
+        </body>
       </html>
     </ClerkProvider>
   );
