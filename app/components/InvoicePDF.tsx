@@ -14,6 +14,12 @@ interface FacturePDFProps {
   company?: CompanyProfile | null;
 }
 
+const BLUE = "#0284c7";
+const INK = "#0f172a";
+const MUTED = "#64748b";
+const LINE = "#e2e8f0";
+const SOFT = "#f8fafc";
+
 const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
   const factureRef = useRef<HTMLDivElement>(null);
   const logoSrc = company?.logoUrl?.split("?")[0];
@@ -23,7 +29,12 @@ const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
     if (!element) return;
 
     try {
-      const canvas = await html2canvas(element, { scale: 3, useCORS: true });
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
       const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF({
@@ -32,10 +43,25 @@ const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
         format: "A4",
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const usableWidth = pageWidth - margin * 2;
+      const imgHeight = (canvas.height * usableWidth) / canvas.width;
 
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      let heightLeft = imgHeight;
+      let position = margin;
+
+      pdf.addImage(imgData, "PNG", margin, position, usableWidth, imgHeight);
+      heightLeft -= pageHeight - margin * 2;
+
+      while (heightLeft > 0) {
+        position = margin - (imgHeight - heightLeft);
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", margin, position, usableWidth, imgHeight);
+        heightLeft -= pageHeight - margin * 2;
+      }
+
       pdf.save(`facture-${invoice.number}.pdf`);
 
       confetti({
@@ -49,6 +75,25 @@ const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
     }
   };
 
+  const cell: React.CSSProperties = {
+    padding: "10px 12px",
+    borderBottom: `1px solid ${LINE}`,
+    fontSize: 13,
+    color: INK,
+    verticalAlign: "top",
+  };
+
+  const th: React.CSSProperties = {
+    ...cell,
+    background: SOFT,
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    borderBottom: `2px solid ${LINE}`,
+  };
+
   return (
     <div className="mt-4 block">
       <div className="rounded-xl border-2 border-dashed border-base-300 p-5">
@@ -57,118 +102,351 @@ const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
           <ArrowDownFromLine className="w-4" />
         </button>
 
-        <div className="overflow-x-auto">
-          <div className="min-w-[640px] bg-white p-8 text-black" ref={factureRef}>
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex flex-col">
-                <div className="flex items-center">
+        <div className="overflow-x-auto bg-base-200/40 p-4">
+          <div
+            ref={factureRef}
+            style={{
+              width: 794,
+              margin: "0 auto",
+              background: "#ffffff",
+              color: INK,
+              fontFamily:
+                'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+              padding: 40,
+              boxSizing: "border-box",
+            }}
+          >
+            {/* Bandeau */}
+            <div
+              style={{
+                height: 6,
+                background: BLUE,
+                borderRadius: 999,
+                marginBottom: 28,
+              }}
+            />
+
+            {/* En-tête */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 24,
+                marginBottom: 32,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 16,
+                  }}
+                >
                   {logoSrc ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={logoSrc}
                       alt="Logo"
-                      className="h-12 w-12 rounded-lg object-contain"
+                      style={{
+                        height: 48,
+                        width: 48,
+                        objectFit: "contain",
+                        borderRadius: 8,
+                      }}
                     />
                   ) : (
-                    <div className="rounded-full bg-info p-2 text-info-content">
-                      <LayersPlus className="h-6 w-6" />
+                    <div
+                      style={{
+                        height: 44,
+                        width: 44,
+                        borderRadius: 10,
+                        background: BLUE,
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <LayersPlus size={22} color="#fff" />
                     </div>
                   )}
-                  <span className="ml-3 text-2xl font-bold italic">
-                    Factu<span className="text-info">Pro</span>
-                  </span>
+                  <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em" }}>
+                    Factu<span style={{ color: BLUE }}>Pro</span>
+                  </div>
                 </div>
-                <h1 className="text-5xl font-bold uppercase">Facture</h1>
+                <div
+                  style={{
+                    fontSize: 36,
+                    fontWeight: 800,
+                    letterSpacing: "-0.03em",
+                    lineHeight: 1,
+                  }}
+                >
+                  FACTURE
+                </div>
+                <div style={{ marginTop: 8, color: MUTED, fontSize: 13 }}>
+                  {invoice.name}
+                </div>
               </div>
-              <div className="text-right uppercase">
-                <p className="badge badge-ghost">{invoice.number}</p>
-                <p className="my-2">
-                  <strong>Date </strong>
+
+              <div
+                style={{
+                  minWidth: 220,
+                  background: SOFT,
+                  border: `1px solid ${LINE}`,
+                  borderRadius: 12,
+                  padding: "16px 18px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 800,
+                    color: BLUE,
+                    marginBottom: 10,
+                  }}
+                >
+                  {invoice.number}
+                </div>
+                <div style={{ fontSize: 12, color: MUTED, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, color: INK }}>Date </span>
                   {formatDisplayDate(invoice.invoiceDate)}
-                </p>
-                <p>
-                  <strong>Échéance </strong>
+                </div>
+                <div style={{ fontSize: 12, color: MUTED }}>
+                  <span style={{ fontWeight: 700, color: INK }}>Échéance </span>
                   {formatDisplayDate(invoice.dueDate)}
-                </p>
+                </div>
               </div>
             </div>
 
-            <div className="my-6 flex justify-between">
-              <div>
-                <p className="badge badge-ghost mb-2">Émetteur</p>
-                <p className="text-sm font-bold italic">{invoice.issuerName}</p>
-                <p className="w-52 break-words text-sm text-gray-500">
-                  {invoice.issuerAddress}
-                </p>
+            {/* Émetteur / Client */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 20,
+                marginBottom: 28,
+              }}
+            >
+              <div
+                style={{
+                  border: `1px solid ${LINE}`,
+                  borderRadius: 12,
+                  padding: 16,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: BLUE,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    marginBottom: 10,
+                  }}
+                >
+                  Émetteur
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+                  {invoice.issuerName || "—"}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: MUTED,
+                    whiteSpace: "pre-wrap",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {invoice.issuerAddress || "—"}
+                </div>
                 {company?.taxId && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    IFU/NIF : {company.taxId}
-                  </p>
+                  <div style={{ fontSize: 12, color: MUTED, marginTop: 8 }}>
+                    IFU / NIF : {company.taxId}
+                  </div>
                 )}
                 {company?.iban && (
-                  <p className="text-xs text-gray-500">IBAN : {company.iban}</p>
+                  <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+                    IBAN : {company.iban}
+                  </div>
                 )}
               </div>
-              <div className="text-right">
-                <p className="badge badge-ghost mb-2">Client</p>
-                <p className="text-sm font-bold italic">{invoice.clientName}</p>
-                <p className="ml-auto w-52 break-words text-sm text-gray-500">
-                  {invoice.clientAddress}
-                </p>
+
+              <div
+                style={{
+                  border: `1px solid ${LINE}`,
+                  borderRadius: 12,
+                  padding: 16,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: BLUE,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    marginBottom: 10,
+                  }}
+                >
+                  Client
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+                  {invoice.clientName || "—"}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: MUTED,
+                    whiteSpace: "pre-wrap",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {invoice.clientAddress || "—"}
+                </div>
+                {invoice.clientEmail && (
+                  <div style={{ fontSize: 12, color: MUTED, marginTop: 8 }}>
+                    {invoice.clientEmail}
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="table table-zebra">
-                <thead>
+            {/* Tableau */}
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                tableLayout: "fixed",
+                marginBottom: 24,
+              }}
+            >
+              <colgroup>
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "42%" }} />
+                <col style={{ width: "14%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "18%" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th style={{ ...th, textAlign: "left" }}>#</th>
+                  <th style={{ ...th, textAlign: "left" }}>Description</th>
+                  <th style={{ ...th, textAlign: "right" }}>Qté</th>
+                  <th style={{ ...th, textAlign: "right" }}>Prix unit.</th>
+                  <th style={{ ...th, textAlign: "right" }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoice.lines.length === 0 ? (
                   <tr>
-                    <th />
-                    <th>Description</th>
-                    <th>Quantité</th>
-                    <th>Prix unitaire</th>
-                    <th>Total</th>
+                    <td
+                      colSpan={5}
+                      style={{ ...cell, textAlign: "center", color: MUTED }}
+                    >
+                      Aucune ligne
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {invoice.lines.map((ligne, index) => (
+                ) : (
+                  invoice.lines.map((ligne, index) => (
                     <tr key={ligne.id}>
-                      <td>{index + 1}</td>
-                      <td>{ligne.description}</td>
-                      <td>{ligne.quantity}</td>
-                      <td>
+                      <td style={{ ...cell, textAlign: "left", color: MUTED }}>
+                        {index + 1}
+                      </td>
+                      <td style={{ ...cell, textAlign: "left", fontWeight: 500 }}>
+                        {ligne.description || "—"}
+                      </td>
+                      <td style={{ ...cell, textAlign: "right" }}>
+                        {ligne.quantity}
+                      </td>
+                      <td style={{ ...cell, textAlign: "right" }}>
                         {formatMoney(ligne.unitPrice, invoice.currency)}
                       </td>
-                      <td>
+                      <td style={{ ...cell, textAlign: "right", fontWeight: 700 }}>
                         {formatMoney(
                           ligne.quantity * ligne.unitPrice,
                           invoice.currency,
                         )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  ))
+                )}
+              </tbody>
+            </table>
+
+            {/* Totaux */}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <div style={{ width: 280 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "8px 0",
+                    fontSize: 13,
+                    color: MUTED,
+                    borderBottom: `1px solid ${LINE}`,
+                  }}
+                >
+                  <span>Total HT</span>
+                  <span style={{ color: INK, fontWeight: 600 }}>
+                    {formatMoney(totals.totalHT, invoice.currency)}
+                  </span>
+                </div>
+                {invoice.vatActive && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      padding: "8px 0",
+                      fontSize: 13,
+                      color: MUTED,
+                      borderBottom: `1px solid ${LINE}`,
+                    }}
+                  >
+                    <span>TVA ({invoice.vatRate} %)</span>
+                    <span style={{ color: INK, fontWeight: 600 }}>
+                      {formatMoney(totals.totalVAT, invoice.currency)}
+                    </span>
+                  </div>
+                )}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginTop: 10,
+                    padding: "12px 14px",
+                    background: BLUE,
+                    color: "#fff",
+                    borderRadius: 10,
+                    fontSize: 14,
+                    fontWeight: 800,
+                  }}
+                >
+                  <span>Total TTC</span>
+                  <span>{formatMoney(totals.totalTTC, invoice.currency)}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-6 space-y-2 text-md">
-              <div className="flex justify-between">
-                <div className="font-bold">Total Hors Taxes</div>
-                <div>{formatMoney(totals.totalHT, invoice.currency)}</div>
-              </div>
-
-              {invoice.vatActive && (
-                <div className="flex justify-between">
-                  <div className="font-bold">TVA {invoice.vatRate} %</div>
-                  <div>{formatMoney(totals.totalVAT, invoice.currency)}</div>
-                </div>
-              )}
-
-              <div className="flex justify-between">
-                <div className="font-bold">Total TTC</div>
-                <div className="badge badge-info">
-                  {formatMoney(totals.totalTTC, invoice.currency)}
-                </div>
-              </div>
+            {/* Pied */}
+            <div
+              style={{
+                marginTop: 36,
+                paddingTop: 16,
+                borderTop: `1px solid ${LINE}`,
+                fontSize: 11,
+                color: MUTED,
+                lineHeight: 1.5,
+              }}
+            >
+              Document généré avec FactuPro
+              {company?.name ? ` — ${company.name}` : ""}.
+              {company?.phone ? ` Tél. ${company.phone}.` : ""}
+              {company?.email ? ` ${company.email}` : ""}
             </div>
           </div>
         </div>
