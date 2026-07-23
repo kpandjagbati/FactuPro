@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+  OVERDUE
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  CONVERTED
+}
+
+model User {
+  id             String       @id @default(cuid())
+  clerkId        String       @unique
+  email          String       @unique
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Organization {
+  id             String          @id @default(cuid())
+  name           String
+  invoiceCounter Int             @default(0)
+  quoteCounter   Int             @default(0)
+  currency       String          @default("XOF")
+  users          User[]
+  companyProfile CompanyProfile?
+  clients        Client[]
+  invoices       Invoice[]
+  quotes         Quote[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model CompanyProfile {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String       @default("")
+  address        String       @default("")
+  email          String?
+  phone          String?
+  taxId          String?
+  iban           String?
+  logoUrl        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Client {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  phone          String?
+  address        String       @default("")
+  taxId          String?
+  invoices       Invoice[]
+  quotes         Quote[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientId       String?
+  client         Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  quoteId        String?       @unique
+  quote          Quote?        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  number         String
+  name           String
+  issuerName     String        @default("")
+  issuerAddress  String        @default("")
+  clientName     String        @default("")
+  clientAddress  String        @default("")
+  clientEmail    String?
+  invoiceDate    DateTime?
+  dueDate        DateTime?
+  vatActive      Boolean       @default(false)
+  vatRate        Float         @default(18)
+  status         InvoiceStatus @default(DRAFT)
+  currency       String        @default("XOF")
+  lines          InvoiceLine[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String  @default("")
+  quantity    Int     @default(1)
+  unitPrice   Float   @default(0)
+
+  @@index([invoiceId])
+}
+
+model Quote {
+  id             String      @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientId       String?
+  client         Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  invoice        Invoice?
+  number         String
+  name           String
+  issuerName     String      @default("")
+  issuerAddress  String      @default("")
+  clientName     String      @default("")
+  clientAddress  String      @default("")
+  clientEmail    String?
+  quoteDate      DateTime?
+  validUntil     DateTime?
+  vatActive      Boolean     @default(false)
+  vatRate        Float       @default(18)
+  status         QuoteStatus @default(DRAFT)
+  currency       String      @default("XOF")
+  lines          QuoteLine[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+  @@index([status])
+}
+
+model QuoteLine {
+  id          String @id @default(cuid())
+  quoteId     String
+  quote       Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  description String @default("")
+  quantity    Int    @default(1)
+  unitPrice   Float  @default(0)
+
+  @@index([quoteId])
+}

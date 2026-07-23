@@ -1,0 +1,211 @@
+"use client";
+
+import Wrapper from "@/app/components/Wrapper";
+import type { Client, ClientInput } from "@/type";
+import { Pencil, Plus, Trash } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  createClient,
+  deleteClient,
+  getClients,
+  updateClient,
+} from "@/app/actions";
+
+const emptyForm: ClientInput = {
+  name: "",
+  email: "",
+  phone: "",
+  address: "",
+  taxId: "",
+};
+
+export default function ClientsPage() {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState<ClientInput>(emptyForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const loadClients = async () => {
+    try {
+      setClients(await getClients());
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadClients();
+  }, []);
+
+  const openCreateModal = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    (document.getElementById("client_modal") as HTMLDialogElement)?.showModal();
+  };
+
+  const openEditModal = (client: Client) => {
+    setEditingId(client.id);
+    setForm({
+      name: client.name,
+      email: client.email || "",
+      phone: client.phone || "",
+      address: client.address || "",
+      taxId: client.taxId || "",
+    });
+    (document.getElementById("client_modal") as HTMLDialogElement)?.showModal();
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      if (editingId) {
+        await updateClient(editingId, form);
+      } else {
+        await createClient(form);
+      }
+      await loadClients();
+      (document.getElementById("client_modal") as HTMLDialogElement)?.close();
+      setForm(emptyForm);
+      setEditingId(null);
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de l'enregistrement du client.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (clientId: string) => {
+    if (!window.confirm("Supprimer ce client ?")) return;
+    try {
+      await deleteClient(clientId);
+      await loadClients();
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de la suppression.");
+    }
+  };
+
+  return (
+    <Wrapper>
+      <div className="flex flex-col space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold">Clients</h1>
+          <button className="btn btn-info btn-sm" onClick={openCreateModal}>
+            <Plus className="w-4" />
+            Ajouter
+          </button>
+        </div>
+
+        {loading ? (
+          <span className="loading loading-spinner loading-md text-info" />
+        ) : clients.length === 0 ? (
+          <p className="text-base-content/70">
+            Aucun client pour le moment. Ajoutez votre premier client.
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl bg-base-200">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Nom</th>
+                  <th>Email</th>
+                  <th>Téléphone</th>
+                  <th>IFU / NIF</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {clients.map((client) => (
+                  <tr key={client.id}>
+                    <td className="font-medium">{client.name}</td>
+                    <td>{client.email || "—"}</td>
+                    <td>{client.phone || "—"}</td>
+                    <td>{client.taxId || "—"}</td>
+                    <td className="flex gap-2">
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => openEditModal(client)}
+                      >
+                        <Pencil className="w-4" />
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-sm text-error"
+                        onClick={() => handleDelete(client.id)}
+                      >
+                        <Trash className="w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <dialog id="client_modal" className="modal">
+          <div className="modal-box">
+            <form method="dialog">
+              <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
+                ✕
+              </button>
+            </form>
+            <h3 className="mb-4 text-lg font-bold">
+              {editingId ? "Modifier le client" : "Nouveau client"}
+            </h3>
+            <div className="space-y-3">
+              <input
+                className="input input-bordered w-full"
+                placeholder="Nom *"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              <input
+                className="input input-bordered w-full"
+                placeholder="Email"
+                value={form.email || ""}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+              <input
+                className="input input-bordered w-full"
+                placeholder="Téléphone"
+                value={form.phone || ""}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+              <textarea
+                className="textarea textarea-bordered w-full"
+                placeholder="Adresse"
+                value={form.address || ""}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+              />
+              <input
+                className="input input-bordered w-full"
+                placeholder="IFU / NIF / RCCM"
+                value={form.taxId || ""}
+                onChange={(e) => setForm({ ...form, taxId: e.target.value })}
+              />
+              <button
+                className="btn btn-info w-full"
+                disabled={!form.name.trim() || saving}
+                onClick={handleSave}
+              >
+                {saving ? (
+                  <span className="loading loading-spinner loading-sm" />
+                ) : (
+                  "Enregistrer"
+                )}
+              </button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop">
+            <button>close</button>
+          </form>
+        </dialog>
+      </div>
+    </Wrapper>
+  );
+}
