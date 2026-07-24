@@ -276,130 +276,173 @@ export async function convertQuoteToInvoice(quoteId: string) {
 }
 
 export async function emailInvoice(invoiceId: string, toEmail?: string) {
-  const user = await requireDbUser();
-  const invoice = await prisma.invoice.findFirst({
-    where: { id: invoiceId, organizationId: user.organizationId },
-    include: { lines: true, client: true },
-  });
-  if (!invoice) throw new Error("Facture introuvable");
-
-  const to =
-    toEmail?.trim() ||
-    invoice.clientEmail ||
-    invoice.client?.email ||
-    "";
-
-  if (!to) {
-    throw new Error(
-      "Aucune adresse email client. Renseignez-en une dans la fiche facture.",
-    );
-  }
-
-  const { ttc } = calcTotal(invoice.lines, invoice.vatActive, invoice.vatRate);
-  const companyName =
-    user.organization.companyProfile?.name || user.organization.name;
-
-  const result = await sendDocumentEmail({
-    kind: "invoice",
-    to,
-    number: invoice.number,
-    name: invoice.name,
-    companyName,
-    totalTTC: ttc,
-    currency: invoice.currency,
-  });
-
-  if (result.mode === "resend") {
-    if (invoice.status === "DRAFT") {
-      await prisma.invoice.update({
-        where: { id: invoice.id },
-        data: { status: "SENT", clientEmail: to },
-      });
-    } else {
-      await prisma.invoice.update({
-        where: { id: invoice.id },
-        data: { clientEmail: to },
-      });
+  try {
+    const user = await requireDbUser();
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: invoiceId, organizationId: user.organizationId },
+      include: { lines: true, client: true },
+    });
+    if (!invoice) {
+      return { mode: "error" as const, message: "Facture introuvable" };
     }
-  }
 
-  return result;
+    const to =
+      toEmail?.trim() ||
+      invoice.clientEmail ||
+      invoice.client?.email ||
+      "";
+
+    if (!to) {
+      return {
+        mode: "error" as const,
+        message:
+          "Aucune adresse email client. Renseignez-en une dans la fiche facture.",
+      };
+    }
+
+    const { ttc } = calcTotal(invoice.lines, invoice.vatActive, invoice.vatRate);
+    const companyName =
+      user.organization.companyProfile?.name || user.organization.name;
+
+    const result = await sendDocumentEmail({
+      kind: "invoice",
+      to,
+      number: invoice.number,
+      name: invoice.name,
+      companyName,
+      totalTTC: ttc,
+      currency: invoice.currency,
+    });
+
+    if (result.mode === "resend") {
+      if (invoice.status === "DRAFT") {
+        await prisma.invoice.update({
+          where: { id: invoice.id },
+          data: { status: "SENT", clientEmail: to },
+        });
+      } else {
+        await prisma.invoice.update({
+          where: { id: invoice.id },
+          data: { clientEmail: to },
+        });
+      }
+    }
+
+    return result;
+  } catch (err) {
+    console.error("emailInvoice", err);
+    return {
+      mode: "error" as const,
+      message:
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de l'envoi de la facture.",
+    };
+  }
 }
 
 export async function emailQuote(quoteId: string, toEmail?: string) {
-  const user = await requireDbUser();
-  const quote = await prisma.quote.findFirst({
-    where: { id: quoteId, organizationId: user.organizationId },
-    include: { lines: true, client: true },
-  });
-  if (!quote) throw new Error("Devis introuvable");
-
-  const to =
-    toEmail?.trim() || quote.clientEmail || quote.client?.email || "";
-
-  if (!to) {
-    throw new Error(
-      "Aucune adresse email client. Renseignez-en une sur le devis.",
-    );
-  }
-
-  const { ttc } = calcTotal(quote.lines, quote.vatActive, quote.vatRate);
-  const companyName =
-    user.organization.companyProfile?.name || user.organization.name;
-
-  const result = await sendDocumentEmail({
-    kind: "quote",
-    to,
-    number: quote.number,
-    name: quote.name,
-    companyName,
-    totalTTC: ttc,
-    currency: quote.currency,
-  });
-
-  if (result.mode === "resend" && quote.status === "DRAFT") {
-    await prisma.quote.update({
-      where: { id: quote.id },
-      data: { status: "SENT", clientEmail: to },
+  try {
+    const user = await requireDbUser();
+    const quote = await prisma.quote.findFirst({
+      where: { id: quoteId, organizationId: user.organizationId },
+      include: { lines: true, client: true },
     });
-  } else if (result.mode === "resend") {
-    await prisma.quote.update({
-      where: { id: quote.id },
-      data: { clientEmail: to },
-    });
-  }
+    if (!quote) {
+      return { mode: "error" as const, message: "Devis introuvable" };
+    }
 
-  return result;
+    const to =
+      toEmail?.trim() || quote.clientEmail || quote.client?.email || "";
+
+    if (!to) {
+      return {
+        mode: "error" as const,
+        message:
+          "Aucune adresse email client. Renseignez-en une sur le devis.",
+      };
+    }
+
+    const { ttc } = calcTotal(quote.lines, quote.vatActive, quote.vatRate);
+    const companyName =
+      user.organization.companyProfile?.name || user.organization.name;
+
+    const result = await sendDocumentEmail({
+      kind: "quote",
+      to,
+      number: quote.number,
+      name: quote.name,
+      companyName,
+      totalTTC: ttc,
+      currency: quote.currency,
+    });
+
+    if (result.mode === "resend" && quote.status === "DRAFT") {
+      await prisma.quote.update({
+        where: { id: quote.id },
+        data: { status: "SENT", clientEmail: to },
+      });
+    } else if (result.mode === "resend") {
+      await prisma.quote.update({
+        where: { id: quote.id },
+        data: { clientEmail: to },
+      });
+    }
+
+    return result;
+  } catch (err) {
+    console.error("emailQuote", err);
+    return {
+      mode: "error" as const,
+      message:
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de l'envoi du devis.",
+    };
+  }
 }
 
 export async function uploadCompanyLogo(formData: FormData) {
-  const user = await requireDbUser();
-  const file = formData.get("logo") as File | null;
-  if (!file || file.size === 0) {
-    throw new Error("Fichier manquant");
+  try {
+    const user = await requireDbUser();
+    const file = formData.get("logo") as File | null;
+    if (!file || file.size === 0) {
+      return { ok: false as const, error: "Fichier manquant" };
+    }
+    if (file.size > 1 * 1024 * 1024) {
+      return { ok: false as const, error: "Logo trop volumineux (max 1 Mo)" };
+    }
+
+    const allowed = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+    if (!allowed.includes(file.type)) {
+      return {
+        ok: false as const,
+        error: "Format non supporté (PNG, JPG, WEBP, SVG)",
+      };
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const logoUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
+
+    await prisma.companyProfile.upsert({
+      where: { organizationId: user.organizationId },
+      update: { logoUrl },
+      create: {
+        organizationId: user.organizationId,
+        name: user.organization.name,
+        logoUrl,
+      },
+    });
+
+    return { ok: true as const, logoUrl };
+  } catch (err) {
+    console.error("uploadCompanyLogo", err);
+    return {
+      ok: false as const,
+      error:
+        err instanceof Error
+          ? err.message
+          : "Upload impossible. Réessayez avec une image plus légère.",
+    };
   }
-  // Stocké en base (data URL) — le FS Vercel est en lecture seule
-  if (file.size > 1 * 1024 * 1024) {
-    throw new Error("Logo trop volumineux (max 1 Mo)");
-  }
-
-  const allowed = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
-  if (!allowed.includes(file.type)) {
-    throw new Error("Format non supporté (PNG, JPG, WEBP, SVG)");
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const logoUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
-
-  await prisma.companyProfile.upsert({
-    where: { organizationId: user.organizationId },
-    update: { logoUrl },
-    create: {
-      organizationId: user.organizationId,
-      name: user.organization.name,
-      logoUrl,
-    },
-  });
-
-  return logoUrl;
 }

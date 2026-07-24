@@ -16,12 +16,8 @@ type SendDocumentEmailParams = {
 
 export type EmailSendResult =
   | { mode: "resend"; to: string }
-  | {
-      mode: "mailto";
-      to: string;
-      subject: string;
-      body: string;
-    };
+  | { mode: "mailto"; to: string; subject: string; body: string }
+  | { mode: "error"; message: string };
 
 function buildCopy(params: SendDocumentEmailParams) {
   const label = params.kind === "invoice" ? "Facture" : "Devis";
@@ -57,7 +53,26 @@ function buildCopy(params: SendDocumentEmailParams) {
   return { label, subject, body, html };
 }
 
-/** Envoi via Resend si clé présente, sinon contenu prêt pour mailto. */
+function friendlyResendError(raw: string, to: string): string {
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes("only send testing emails") ||
+    lower.includes("verify a domain") ||
+    lower.includes("own email")
+  ) {
+    return (
+      `Resend (mode test) n'autorise l'envoi qu'à votre email de compte.\n` +
+      `Destinataire : ${to}\n\n` +
+      `Solution : envoyez à votre email Resend, ou vérifiez un domaine sur resend.com.`
+    );
+  }
+  if (lower.includes("api key") || lower.includes("unauthorized") || lower.includes("invalid")) {
+    return `Clé Resend invalide ou refusée. Vérifiez RESEND_API_KEY sur Vercel.\n(${raw})`;
+  }
+  return `Échec d'envoi Resend : ${raw}`;
+}
+
+/** Envoi via Resend si clé présente, sinon contenu prêt pour mailto. Ne throw pas. */
 export async function sendDocumentEmail(
   params: SendDocumentEmailParams,
 ): Promise<EmailSendResult> {
@@ -68,41 +83,30 @@ export async function sendDocumentEmail(
     return { mode: "mailto", to: params.to, subject, body };
   }
 
-  const resend = new Resend(apiKey);
-  const from =
-    params.fromEmail ||
-    process.env.RESEND_FROM_EMAIL ||
-    "FactuPro <onboarding@resend.dev>";
+  try {
+    const resend = new Resend(apiKey);
+    const from =
+      params.fromEmail ||
+      process.env.RESEND_FROM_EMAIL ||
+      "FactuPro <onboarding@resend.dev>";
 
-  const { error } = await resend.emails.send({
-    from,
-    to: params.to,
-    subject,
-    html,
-  });
+    const { error } = await resend.emails.send({
+      from,
+      to: params.to,
+      subject,
+      html,
+    });
 
-  if (error) {
-    throw new Error(error.message);
+    if (error) {
+      return {
+        mode: "error",
+        message: friendlyResendError(error.message, params.to),
+      };
+    }
+
+    return { mode: "resend", to: params.to };
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : "Erreur inconnue";
+    return { mode: "error", message: friendlyResendError(raw, params.to) };
   }
-
-  return { mode: "resend", to: params.to };
-}
-
-/** @deprecated use sendDocumentEmail */
-export async function sendInvoiceEmail(
-  params: Omit<SendDocumentEmailParams, "kind" | "number" | "name"> & {
-    invoiceNumber: string;
-    invoiceName: string;
-  },
-) {
-  return sendDocumentEmail({
-    kind: "invoice",
-    to: params.to,
-    number: params.invoiceNumber,
-    name: params.invoiceName,
-    companyName: params.companyName,
-    totalTTC: params.totalTTC,
-    currency: params.currency,
-    fromEmail: params.fromEmail,
-  });
 }

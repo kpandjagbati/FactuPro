@@ -69,15 +69,15 @@ export default function EntreprisePage() {
     try {
       const data = new FormData();
       data.append("logo", file);
-      const logoUrl = await uploadCompanyLogo(data);
-      setForm((prev) => ({ ...prev, logoUrl }));
+      const result = await uploadCompanyLogo(data);
+      if (!result.ok) {
+        alert(result.error);
+        return;
+      }
+      setForm((prev) => ({ ...prev, logoUrl: result.logoUrl }));
     } catch (error) {
       console.error(error);
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : "Upload impossible. Réessayez avec une image plus légère (max 1 Mo).";
-      alert(message);
+      alert("Upload impossible. Réessayez avec une image plus légère (max 1 Mo).");
     } finally {
       setUploading(false);
     }
