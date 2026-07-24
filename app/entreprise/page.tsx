@@ -8,7 +8,6 @@ import { uploadCompanyLogo } from "@/app/actions-v2";
 import Wrapper from "@/app/components/Wrapper";
 import type { CompanyProfileInput } from "@/type";
 import { Save, Upload } from "lucide-react";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 
 const emptyForm: CompanyProfileInput = {
@@ -74,7 +73,11 @@ export default function EntreprisePage() {
       setForm((prev) => ({ ...prev, logoUrl }));
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Upload impossible");
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Upload impossible. Réessayez avec une image plus légère (max 1 Mo).";
+      alert(message);
     } finally {
       setUploading(false);
     }
@@ -96,13 +99,13 @@ export default function EntreprisePage() {
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
               <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl bg-base-100">
                 {form.logoUrl ? (
-                  <Image
-                    src={form.logoUrl.split("?")[0]}
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={form.logoUrl}
                     alt="Logo entreprise"
                     width={80}
                     height={80}
                     className="h-full w-full object-contain"
-                    unoptimized
                   />
                 ) : (
                   <span className="text-xs opacity-50">Logo</span>

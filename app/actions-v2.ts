@@ -5,8 +5,6 @@ import prisma from "@/lib/prisma";
 import type { DashboardStats, Quote } from "@/type";
 import type { QuoteStatus } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 
 async function requireDbUser() {
   const { userId } = await auth();
@@ -329,8 +327,9 @@ export async function uploadCompanyLogo(formData: FormData) {
   if (!file || file.size === 0) {
     throw new Error("Fichier manquant");
   }
-  if (file.size > 2 * 1024 * 1024) {
-    throw new Error("Logo trop volumineux (max 2 Mo)");
+  // Stocké en base (data URL) — le FS Vercel est en lecture seule
+  if (file.size > 1 * 1024 * 1024) {
+    throw new Error("Logo trop volumineux (max 1 Mo)");
   }
 
   const allowed = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
@@ -338,14 +337,9 @@ export async function uploadCompanyLogo(formData: FormData) {
     throw new Error("Format non supporté (PNG, JPG, WEBP, SVG)");
   }
 
-  const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
-  const filename = `${user.organizationId}-logo.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(dir, filename), buffer);
+  const logoUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
 
-  const logoUrl = `/uploads/${filename}?v=${Date.now()}`;
   await prisma.companyProfile.upsert({
     where: { organizationId: user.organizationId },
     update: { logoUrl },

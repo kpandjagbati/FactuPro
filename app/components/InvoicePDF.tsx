@@ -22,7 +22,9 @@ const SOFT = "#f8fafc";
 
 const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
   const factureRef = useRef<HTMLDivElement>(null);
-  const logoSrc = company?.logoUrl?.split("?")[0];
+  const logoSrc = company?.logoUrl?.startsWith("data:")
+    ? company.logoUrl
+    : company?.logoUrl?.split("?")[0];
 
   const handleDownloadPdf = async () => {
     const element = factureRef.current;
