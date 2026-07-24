@@ -4,15 +4,17 @@ import { getClients } from "@/app/actions";
 import {
   convertQuoteToInvoice,
   deleteQuote,
+  emailQuote,
   getQuoteById,
   updateQuote,
 } from "@/app/actions-v2";
 import VATControl from "@/app/components/VATControl";
 import Wrapper from "@/app/components/Wrapper";
+import { handleEmailResult } from "@/lib/email-client";
 import { formatMoney, toDateInputValue } from "@/lib/format";
 import type { Client, Quote, QuoteLine, QuoteStatus, Totals } from "@/type";
 import { QUOTE_STATUS_LABELS, QUOTE_STATUSES } from "@/type";
-import { FileInput, Plus, Save, Trash } from "lucide-react";
+import { FileInput, Mail, Plus, Save, Trash } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -25,6 +27,7 @@ export default function QuoteDetailPage() {
   const [totals, setTotals] = useState<Totals | null>(null);
   const [saving, setSaving] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [emailing, setEmailing] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -96,6 +99,37 @@ export default function QuoteDetailPage() {
     router.push("/quotes");
   };
 
+  const handleEmail = async () => {
+    if (!quote) return;
+    if (dirty) {
+      alert("Sauvegardez le devis avant l'envoi.");
+      return;
+    }
+    if (!quote.clientEmail?.trim()) {
+      alert("Ajoutez l'email du client avant l'envoi.");
+      return;
+    }
+    setEmailing(true);
+    try {
+      const result = await emailQuote(quote.id);
+      const mode = handleEmailResult(result, "devis");
+      if (mode === "resend") {
+        const refreshed = await getQuoteById(quote.id);
+        setQuote(refreshed);
+        setInitial(refreshed);
+      }
+    } catch (error) {
+      console.error(error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Erreur lors de l'envoi de l'email.",
+      );
+    } finally {
+      setEmailing(false);
+    }
+  };
+
   const addLine = () => {
     if (!quote) return;
     const line: QuoteLine = {
@@ -156,6 +190,19 @@ export default function QuoteDetailPage() {
             ) : (
               <>
                 Sauvegarder <Save className="ml-1 w-4" />
+              </>
+            )}
+          </button>
+          <button
+            className="btn btn-sm btn-secondary"
+            disabled={emailing || quote.status === "CONVERTED"}
+            onClick={handleEmail}
+          >
+            {emailing ? (
+              <span className="loading loading-spinner loading-sm" />
+            ) : (
+              <>
+                Email <Mail className="ml-1 w-4" />
               </>
             )}
           </button>
@@ -243,6 +290,15 @@ export default function QuoteDetailPage() {
               placeholder="Nom client"
               value={quote.clientName}
               onChange={(e) => setQuote({ ...quote, clientName: e.target.value })}
+            />
+            <input
+              type="email"
+              className="input input-bordered w-full"
+              placeholder="Email du client (pour envoi)"
+              value={quote.clientEmail || ""}
+              onChange={(e) =>
+                setQuote({ ...quote, clientEmail: e.target.value })
+              }
             />
             <textarea
               className="textarea textarea-bordered w-full"

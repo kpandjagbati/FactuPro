@@ -1,6 +1,6 @@
 "use server";
 
-import { sendInvoiceEmail } from "@/lib/email";
+import { sendDocumentEmail } from "@/lib/email";
 import prisma from "@/lib/prisma";
 import type { DashboardStats, Quote } from "@/type";
 import type { QuoteStatus } from "@prisma/client";
@@ -290,35 +290,86 @@ export async function emailInvoice(invoiceId: string, toEmail?: string) {
     "";
 
   if (!to) {
-    throw new Error("Aucune adresse email client. Renseignez-en une.");
+    throw new Error(
+      "Aucune adresse email client. Renseignez-en une dans la fiche facture.",
+    );
   }
 
   const { ttc } = calcTotal(invoice.lines, invoice.vatActive, invoice.vatRate);
   const companyName =
     user.organization.companyProfile?.name || user.organization.name;
 
-  await sendInvoiceEmail({
+  const result = await sendDocumentEmail({
+    kind: "invoice",
     to,
-    invoiceNumber: invoice.number,
-    invoiceName: invoice.name,
+    number: invoice.number,
+    name: invoice.name,
     companyName,
     totalTTC: ttc,
     currency: invoice.currency,
   });
 
-  if (invoice.status === "DRAFT") {
-    await prisma.invoice.update({
-      where: { id: invoice.id },
+  if (result.mode === "resend") {
+    if (invoice.status === "DRAFT") {
+      await prisma.invoice.update({
+        where: { id: invoice.id },
+        data: { status: "SENT", clientEmail: to },
+      });
+    } else {
+      await prisma.invoice.update({
+        where: { id: invoice.id },
+        data: { clientEmail: to },
+      });
+    }
+  }
+
+  return result;
+}
+
+export async function emailQuote(quoteId: string, toEmail?: string) {
+  const user = await requireDbUser();
+  const quote = await prisma.quote.findFirst({
+    where: { id: quoteId, organizationId: user.organizationId },
+    include: { lines: true, client: true },
+  });
+  if (!quote) throw new Error("Devis introuvable");
+
+  const to =
+    toEmail?.trim() || quote.clientEmail || quote.client?.email || "";
+
+  if (!to) {
+    throw new Error(
+      "Aucune adresse email client. Renseignez-en une sur le devis.",
+    );
+  }
+
+  const { ttc } = calcTotal(quote.lines, quote.vatActive, quote.vatRate);
+  const companyName =
+    user.organization.companyProfile?.name || user.organization.name;
+
+  const result = await sendDocumentEmail({
+    kind: "quote",
+    to,
+    number: quote.number,
+    name: quote.name,
+    companyName,
+    totalTTC: ttc,
+    currency: quote.currency,
+  });
+
+  if (result.mode === "resend" && quote.status === "DRAFT") {
+    await prisma.quote.update({
+      where: { id: quote.id },
       data: { status: "SENT", clientEmail: to },
     });
-  } else {
-    await prisma.invoice.update({
-      where: { id: invoice.id },
+  } else if (result.mode === "resend") {
+    await prisma.quote.update({
+      where: { id: quote.id },
       data: { clientEmail: to },
     });
   }
 
-  return { ok: true, to };
+  return result;
 }
 
 export async function uploadCompanyLogo(formData: FormData) {

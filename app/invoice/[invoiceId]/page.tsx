@@ -19,6 +19,7 @@ import {
   updateInvoice,
 } from "@/app/actions";
 import { emailInvoice } from "@/app/actions-v2";
+import { handleEmailResult } from "@/lib/email-client";
 
 const InvoicePDF = dynamic(() => import("@/app/components/InvoicePDF"), {
   ssr: false,
@@ -126,13 +127,19 @@ export default function InvoiceDetailPage() {
       alert("Sauvegardez la facture avant l'envoi.");
       return;
     }
+    if (!invoice.clientEmail?.trim() && !invoice.client?.email) {
+      alert("Ajoutez l'email du client avant l'envoi.");
+      return;
+    }
     setEmailing(true);
     try {
       const result = await emailInvoice(invoice.id);
-      alert(`Facture envoyée à ${result.to}`);
-      const refreshed = await getInvoiceById(invoice.id);
-      setInvoice(refreshed);
-      setInitialInvoice(refreshed);
+      const mode = handleEmailResult(result, "facture");
+      if (mode === "resend") {
+        const refreshed = await getInvoiceById(invoice.id);
+        setInvoice(refreshed);
+        setInitialInvoice(refreshed);
+      }
     } catch (error) {
       console.error(error);
       alert(
