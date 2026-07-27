@@ -3,6 +3,7 @@
 import { sendDocumentEmail } from "@/lib/email";
 import prisma from "@/lib/prisma";
 import type { DashboardStats, Quote } from "@/type";
+import { INVOICE_STATUS_LABELS } from "@/type";
 import type { QuoteStatus } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
 
@@ -49,22 +50,65 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   let overdueTotal = 0;
   let overdueCount = 0;
   let pendingCount = 0;
+  let pendingTotal = 0;
   let draftCount = 0;
   const clientTotals = new Map<string, number>();
+  const statusCounts = new Map<string, number>();
+
+  const now = new Date();
+  const monthKeys: string[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  const monthlyPaid = new Map(monthKeys.map((k) => [k, 0]));
+  const monthlyCount = new Map(monthKeys.map((k) => [k, 0]));
 
   for (const invoice of invoices) {
     const { ttc } = calcTotal(invoice.lines, invoice.vatActive, invoice.vatRate);
+    statusCounts.set(
+      invoice.status,
+      (statusCounts.get(invoice.status) || 0) + 1,
+    );
+
     if (invoice.status === "PAID") paidTotal += ttc;
     if (invoice.status === "OVERDUE") {
       overdueCount += 1;
       overdueTotal += ttc;
     }
-    if (invoice.status === "SENT") pendingCount += 1;
+    if (invoice.status === "SENT") {
+      pendingCount += 1;
+      pendingTotal += ttc;
+    }
     if (invoice.status === "DRAFT") draftCount += 1;
 
     const clientName = invoice.clientName || invoice.client?.name || "Sans client";
     clientTotals.set(clientName, (clientTotals.get(clientName) || 0) + ttc);
+
+    const created = new Date(invoice.createdAt);
+    const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
+    if (monthlyCount.has(key)) {
+      monthlyCount.set(key, (monthlyCount.get(key) || 0) + 1);
+    }
+    if (invoice.status === "PAID" && monthlyPaid.has(key)) {
+      monthlyPaid.set(key, (monthlyPaid.get(key) || 0) + ttc);
+    }
   }
+
+  const monthLabel = (key: string) => {
+    const [y, m] = key.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString("fr-FR", {
+      month: "short",
+    });
+  };
+
+  const statusBreakdown = (
+    ["DRAFT", "SENT", "PAID", "OVERDUE", "CANCELLED"] as const
+  ).map((status) => ({
+    status,
+    label: INVOICE_STATUS_LABELS[status],
+    count: statusCounts.get(status) || 0,
+  }));
 
   const topClients = [...clientTotals.entries()]
     .map(([name, total]) => ({ name, total }))
@@ -78,10 +122,20 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     overdueCount,
     overdueTotal,
     pendingCount,
+    pendingTotal,
     draftCount,
     currency,
     topClients,
     recentInvoices: invoices.slice(0, 5),
+    monthlyRevenue: monthKeys.map((key) => ({
+      label: monthLabel(key),
+      total: monthlyPaid.get(key) || 0,
+    })),
+    monthlyInvoices: monthKeys.map((key) => ({
+      label: monthLabel(key),
+      count: monthlyCount.get(key) || 0,
+    })),
+    statusBreakdown,
   };
 }
 

@@ -50,10 +50,14 @@ export type DashboardStats = {
   overdueCount: number;
   overdueTotal: number;
   pendingCount: number;
+  pendingTotal: number;
   draftCount: number;
   currency: string;
   topClients: { name: string; total: number }[];
   recentInvoices: Invoice[];
+  monthlyRevenue: { label: string; total: number }[];
+  monthlyInvoices: { label: string; count: number }[];
+  statusBreakdown: { status: InvoiceStatus; label: string; count: number }[];
 };
 
 export type { Client, CompanyProfile, InvoiceLine, InvoiceStatus, QuoteLine, QuoteStatus };

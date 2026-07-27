@@ -7,8 +7,8 @@ import { formatMoney } from "@/lib/format";
 import type { DashboardStats } from "@/type";
 import {
   AlertTriangle,
-  FileText,
   FileClock,
+  FileText,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -75,6 +75,9 @@ export default function DashboardPage() {
                   <FileClock className="h-4 w-4" /> En attente
                 </div>
                 <div className="mt-2 text-2xl font-bold">{stats.pendingCount}</div>
+                <div className="text-sm opacity-70">
+                  {formatMoney(stats.pendingTotal, stats.currency)}
+                </div>
               </div>
               <div className="rounded-xl bg-base-200 p-5">
                 <div className="flex items-center gap-2 text-sm opacity-70">

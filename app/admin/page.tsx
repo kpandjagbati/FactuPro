@@ -1,13 +1,19 @@
 "use client";
 
 import { getAdminOverview } from "@/app/actions-admin";
+import RevenueGrowthChart from "@/app/components/stats/RevenueGrowthChart";
+import StatCardHorizontal from "@/app/components/stats/StatCardHorizontal";
+import StatCardWithAreaChart from "@/app/components/stats/StatCardWithAreaChart";
+import StatisticsCard from "@/app/components/stats/StatisticsCard";
+import StatusDonutChart from "@/app/components/stats/StatusDonutChart";
 import {
+  AlertTriangle,
   Building2,
   FileText,
+  Quote,
   TrendingUp,
   Users,
   Wallet,
-  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -53,47 +59,117 @@ export default function AdminHomePage() {
         </p>
       </div>
 
-      {/* KPI principaux */}
+      <StatisticsCard
+        title="Vue d'ensemble plateforme"
+        caption="Temps réel"
+        items={[
+          {
+            title: "Utilisateurs",
+            stats: String(data.userCount),
+            icon: Users,
+            tone: "info",
+          },
+          {
+            title: "Organisations",
+            stats: String(data.orgCount),
+            icon: Building2,
+            tone: "neutral",
+          },
+          {
+            title: "Factures",
+            stats: String(data.invoiceCount),
+            icon: FileText,
+            tone: "warning",
+          },
+          {
+            title: "CA encaissé",
+            stats: data.paidTotalLabel,
+            icon: Wallet,
+            tone: "success",
+          },
+        ]}
+      />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl bg-base-200 p-5">
-          <div className="flex items-center gap-2 text-sm opacity-70">
-            <Users className="h-4 w-4" /> Utilisateurs
-          </div>
-          <div className="mt-2 text-3xl font-bold">{data.userCount}</div>
-          <div className="mt-1 text-xs opacity-60">
-            +{data.usersLast7} / 7j · +{data.usersLast30} / 30j
-          </div>
-        </div>
-        <div className="rounded-xl bg-base-200 p-5">
-          <div className="flex items-center gap-2 text-sm opacity-70">
-            <Building2 className="h-4 w-4" /> Organisations
-          </div>
-          <div className="mt-2 text-3xl font-bold">{data.orgCount}</div>
-        </div>
-        <div className="rounded-xl bg-base-200 p-5">
-          <div className="flex items-center gap-2 text-sm opacity-70">
-            <FileText className="h-4 w-4" /> Factures
-          </div>
-          <div className="mt-2 text-3xl font-bold">{data.invoiceCount}</div>
-          <div className="mt-1 text-xs opacity-60">
-            +{data.invoicesLast7} / 7j · +{data.invoicesLast30} / 30j ·{" "}
-            {data.quoteCount} devis
-          </div>
-        </div>
-        <div className="rounded-xl bg-base-200 p-5">
-          <div className="flex items-center gap-2 text-sm opacity-70">
-            <Wallet className="h-4 w-4" /> CA encaissé
-          </div>
-          <div className="mt-2 text-2xl font-bold text-success">
-            {data.paidTotalLabel}
-          </div>
-          <div className="mt-1 text-xs opacity-60">
-            {data.paidCount} facture(s) payée(s)
-          </div>
-        </div>
+        <StatCardHorizontal
+          title="Utilisateurs"
+          stats={String(data.userCount)}
+          subtitle={`+${data.usersLast7} / 7j · +${data.usersLast30} / 30j`}
+          icon={Users}
+          tone="info"
+        />
+        <StatCardHorizontal
+          title="Factures"
+          stats={String(data.invoiceCount)}
+          subtitle={`+${data.invoicesLast7} / 7j · ${data.quoteCount} devis`}
+          icon={FileText}
+          tone="warning"
+        />
+        <StatCardHorizontal
+          title="Impayées"
+          stats={data.overdueTotalLabel}
+          subtitle={`${data.overdueCount} facture(s)`}
+          icon={AlertTriangle}
+          tone="error"
+        />
+        <StatCardHorizontal
+          title="Conversion devis"
+          stats={`${data.quoteConversionRate}%`}
+          subtitle={`${data.quotesConverted}/${data.quoteCount} convertis`}
+          icon={TrendingUp}
+          tone="success"
+        />
       </div>
 
-      {/* KPI secondaires */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <RevenueGrowthChart
+            title="CA plateforme (6 mois)"
+            labels={data.monthlyActivity.map((m) => m.label)}
+            values={data.monthlyActivity.map((m) => m.revenue)}
+            currency="XOF"
+          />
+        </div>
+        <StatusDonutChart
+          title="Répartition des factures"
+          items={data.statusBreakdown.map((s) => ({
+            label: s.label,
+            count: s.count,
+          }))}
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCardWithAreaChart
+          title="Factures / mois"
+          stats={String(data.invoiceCount)}
+          icon={FileText}
+          tone="info"
+          series={data.monthlyActivity.map((m) => m.invoices)}
+        />
+        <StatCardWithAreaChart
+          title="Inscriptions / mois"
+          stats={String(data.userCount)}
+          icon={Users}
+          tone="neutral"
+          series={data.monthlyActivity.map((m) => m.signups)}
+        />
+        <StatCardWithAreaChart
+          title="CA mensuel"
+          stats={data.paidTotalLabel}
+          icon={Wallet}
+          tone="success"
+          series={data.monthlyActivity.map((m) => m.revenue)}
+        />
+        <StatCardWithAreaChart
+          title="Devis"
+          stats={String(data.quoteCount)}
+          icon={Quote}
+          tone="warning"
+          series={data.monthlyActivity.map((m) => m.invoices)}
+        />
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-warning/30 bg-base-200 p-4">
           <div className="text-sm opacity-70">En attente de paiement</div>
@@ -111,105 +187,13 @@ export default function AdminHomePage() {
         </div>
         <div className="rounded-xl border border-info/30 bg-base-200 p-4">
           <div className="flex items-center gap-1 text-sm opacity-70">
-            <TrendingUp className="h-3.5 w-3.5" /> Conversion devis
+            <Building2 className="h-3.5 w-3.5" /> Organisations
           </div>
-          <div className="mt-1 text-xl font-bold">{data.quoteConversionRate}%</div>
-          <div className="text-xs opacity-60">
-            {data.quotesConverted}/{data.quoteCount} convertis
-          </div>
+          <div className="mt-1 text-xl font-bold">{data.orgCount}</div>
+          <div className="text-xs opacity-60">comptes actifs</div>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Répartition statuts */}
-        <div className="rounded-xl bg-base-200 p-5">
-          <h2 className="mb-4 font-bold">Répartition des factures</h2>
-          <div className="space-y-3">
-            {data.statusBreakdown.map((s) => (
-              <div key={s.key}>
-                <div className="mb-1 flex justify-between text-sm">
-                  <span>{s.label}</span>
-                  <span className="font-medium">
-                    {s.count} ({s.percent}%)
-                  </span>
-                </div>
-                <progress
-                  className={`progress w-full ${
-                    s.color === "success"
-                      ? "progress-success"
-                      : s.color === "warning"
-                        ? "progress-warning"
-                        : s.color === "error"
-                          ? "progress-error"
-                          : s.color === "info"
-                            ? "progress-info"
-                            : "progress-neutral"
-                  }`}
-                  value={s.percent}
-                  max={100}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Activité mensuelle */}
-        <div className="rounded-xl bg-base-200 p-5">
-          <h2 className="mb-4 font-bold">Activité (6 derniers mois)</h2>
-          <div className="flex h-40 items-end gap-2">
-            {data.monthlyActivity.map((m) => (
-              <div
-                key={m.key}
-                className="flex flex-1 flex-col items-center gap-1"
-              >
-                <div className="flex h-28 w-full items-end justify-center gap-0.5">
-                  <div
-                    className="w-1/2 rounded-t bg-info"
-                    style={{
-                      height: `${Math.max(
-                        4,
-                        (m.invoices / data.maxMonthlyInvoices) * 100,
-                      )}%`,
-                    }}
-                    title={`${m.invoices} factures`}
-                  />
-                  <div
-                    className="w-1/2 rounded-t bg-neutral"
-                    style={{
-                      height: `${Math.max(
-                        4,
-                        (m.signups / data.maxMonthlySignups) * 100,
-                      )}%`,
-                    }}
-                    title={`${m.signups} inscriptions`}
-                  />
-                </div>
-                <span className="text-[10px] opacity-70">{m.label}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex gap-4 text-xs opacity-70">
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-sm bg-info" />{" "}
-              Factures
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-sm bg-neutral" />{" "}
-              Inscriptions
-            </span>
-          </div>
-          <div className="mt-4 space-y-1 text-sm">
-            {data.monthlyActivity.map((m) => (
-              <div key={`rev-${m.key}`} className="flex justify-between">
-                <span className="opacity-70">{m.label}</span>
-                <span className="font-medium">{m.revenueLabel}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Top orgs */}
       <div className="rounded-xl bg-base-200 p-5">
         <h2 className="mb-3 font-bold">Top organisations (CA)</h2>
         {data.topOrganizations.length === 0 ? (
