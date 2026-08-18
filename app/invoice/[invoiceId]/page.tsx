@@ -114,7 +114,7 @@ export default function InvoiceDetailPage() {
 
     try {
       await deleteInvoice(invoice.id);
-      router.push("/");
+      router.push("/invoices");
     } catch (error) {
       console.error("Erreur lors de la suppression :", error);
       alert("Erreur lors de la suppression.");

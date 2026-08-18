@@ -37,7 +37,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold">Dashboard</h1>
           <div className="flex gap-2">
-            <Link href="/" className="btn btn-sm btn-ghost">
+            <Link href="/invoices" className="btn btn-sm btn-ghost">
               Factures
             </Link>
             <Link href="/quotes" className="btn btn-sm btn-info">

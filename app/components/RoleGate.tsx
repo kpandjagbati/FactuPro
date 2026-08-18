@@ -22,7 +22,12 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
     const onAuth =
       pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
 
-    if (!user || onAuth) {
+    if (!user) {
+      setReady(true);
+      return;
+    }
+
+    if (onAuth) {
       setReady(true);
       return;
     }
@@ -40,14 +45,19 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
     }
 
     if (!isAdmin && onAdmin) {
-      router.replace("/");
+      router.replace("/invoices");
       return;
     }
 
     setReady(true);
   }, [isLoaded, user, pathname, router]);
 
-  if (!isLoaded || !ready) {
+  const onPublic =
+    pathname === "/" ||
+    pathname.startsWith("/sign-in") ||
+    pathname.startsWith("/sign-up");
+
+  if ((!isLoaded || !ready) && !onPublic) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <span className="loading loading-spinner loading-lg text-info" />

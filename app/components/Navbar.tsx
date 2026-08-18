@@ -10,7 +10,7 @@ import ThemeToggle from "./ThemeToggle";
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/", label: "Factures" },
+  { href: "/invoices", label: "Factures" },
   { href: "/quotes", label: "Devis" },
   { href: "/clients", label: "Clients" },
   { href: "/entreprise", label: "Entreprise" },
@@ -39,7 +39,7 @@ const Navbar = () => {
   return (
     <div className="border-b border-base-300 px-5 py-4 md:px-[10%]">
       <div className="flex items-center justify-between">
-        <Link href="/" className="flex items-center">
+        <Link href="/invoices" className="flex items-center">
           <div className="rounded-full bg-info p-2 text-info-content">
             <LayersPlus className="h-6 w-6" />
           </div>

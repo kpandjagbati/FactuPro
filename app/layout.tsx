@@ -13,7 +13,8 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: "FactuPro",
-  description: "SaaS de gestion de factures",
+  description:
+    "SaaS de facturation en français et en XOF — factures, devis, PDF, clients.",
 };
 
 const themeInitScript = `
@@ -35,8 +36,8 @@ export default function RootLayout({
   return (
     <ClerkProvider
       telemetry={false}
-      signInFallbackRedirectUrl="/"
-      signUpFallbackRedirectUrl="/"
+      signInFallbackRedirectUrl="/invoices"
+      signUpFallbackRedirectUrl="/invoices"
     >
       <html
         lang="fr"

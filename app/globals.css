@@ -7,6 +7,14 @@ body {
   min-height: 100vh;
 }
 
+.undraw-hero {
+  --primary-svg-color: #0284c7;
+}
+
+[data-theme="dark"] .undraw-hero {
+  --primary-svg-color: #38bdf8;
+}
+
 .scrollable {
   overflow-y: auto;
   max-height: 70vh;
