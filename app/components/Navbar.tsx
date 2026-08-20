@@ -1,12 +1,13 @@
 "use client";
 
-import { UserButton, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { LayersPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { checkAndAddUser } from "@/app/actions";
 import ThemeToggle from "./ThemeToggle";
+import UserMenuButton from "./UserMenuButton";
 
 const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
@@ -61,7 +62,7 @@ const Navbar = () => {
             ))}
           </div>
           <ThemeToggle />
-          <UserButton />
+          <UserMenuButton />
         </div>
       </div>
 

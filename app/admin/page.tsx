@@ -94,7 +94,7 @@ export default function AdminHomePage() {
         <StatCardHorizontal
           title="Utilisateurs"
           stats={String(data.userCount)}
-          subtitle={`+${data.usersLast7} / 7j · +${data.usersLast30} / 30j`}
+          subtitle={`+${data.usersLast7} / 7j · +${data.usersLast30} / 30j · Dernier accès : ${data.latestSignupLabel}`}
           icon={Users}
           tone="info"
         />
@@ -170,6 +170,66 @@ export default function AdminHomePage() {
         />
       </div>
 
+      <div className="rounded-xl bg-base-200 p-5">
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-bold">Accès à la plateforme</h2>
+            <p className="text-sm text-base-content/65">
+              Date de première connexion / inscription de chaque utilisateur
+            </p>
+          </div>
+          <span className="badge badge-info badge-outline">
+            Dernier accès : {data.latestSignupLabel}
+          </span>
+        </div>
+
+        {data.users.length === 0 ? (
+          <p className="text-sm opacity-60">Aucun utilisateur inscrit.</p>
+        ) : (
+          <>
+            <div className="space-y-3 md:hidden">
+              {data.users.map((u) => (
+                <div key={u.id} className="rounded-lg border border-base-300 p-3">
+                  <p className="font-semibold">{u.name}</p>
+                  <p className="truncate text-xs text-base-content/65">{u.email}</p>
+                  <div className="mt-2 flex justify-between gap-2 text-sm">
+                    <span className="truncate">{u.organization}</span>
+                    <span className="shrink-0 font-medium text-info">
+                      {u.joinedAtLabel}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th>Organisation</th>
+                    <th>Accès depuis</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.users.map((u) => (
+                    <tr key={u.id}>
+                      <td className="font-medium">{u.name}</td>
+                      <td className="text-xs">{u.email}</td>
+                      <td>{u.organization}</td>
+                      <td className="whitespace-nowrap font-medium text-info">
+                        {u.joinedAtLabel}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <div className="rounded-xl border border-warning/30 bg-base-200 p-4">
           <div className="text-sm opacity-70">En attente de paiement</div>
@@ -241,6 +301,7 @@ export default function AdminHomePage() {
                   <th>Nom</th>
                   <th>Email</th>
                   <th>Organisation</th>
+                  <th>Accès depuis</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,6 +310,9 @@ export default function AdminHomePage() {
                     <td>{u.name}</td>
                     <td className="text-xs">{u.email}</td>
                     <td>{u.organization}</td>
+                    <td className="whitespace-nowrap text-sm text-info">
+                      {u.joinedAtLabel}
+                    </td>
                   </tr>
                 ))}
               </tbody>

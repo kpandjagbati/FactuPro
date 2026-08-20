@@ -1,6 +1,7 @@
 "use client";
 
 import { getAdminOverview } from "@/app/actions-admin";
+import { formatDisplayDateTime } from "@/lib/format";
 import { useEffect, useState } from "react";
 
 type Overview = Awaited<ReturnType<typeof getAdminOverview>>;
@@ -40,8 +41,8 @@ export default function AdminUsersPage() {
                 <p className="truncate text-sm text-base-content/65">{u.email}</p>
                 <div className="mt-2 flex justify-between text-sm">
                   <span>{u.organization}</span>
-                  <span className="opacity-60">
-                    {new Date(u.createdAt).toLocaleDateString("fr-FR")}
+                  <span className="shrink-0 font-medium text-info">
+                    {u.joinedAtLabel ?? formatDisplayDateTime(u.createdAt)}
                   </span>
                 </div>
               </div>
@@ -55,7 +56,7 @@ export default function AdminUsersPage() {
                   <th>Nom</th>
                   <th>Email</th>
                   <th>Organisation</th>
-                  <th>Inscrit le</th>
+                  <th>Accès depuis</th>
                 </tr>
               </thead>
               <tbody>
@@ -64,7 +65,9 @@ export default function AdminUsersPage() {
                     <td className="font-medium">{u.name}</td>
                     <td>{u.email}</td>
                     <td>{u.organization}</td>
-                    <td>{new Date(u.createdAt).toLocaleDateString("fr-FR")}</td>
+                    <td className="whitespace-nowrap font-medium text-info">
+                      {u.joinedAtLabel ?? formatDisplayDateTime(u.createdAt)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

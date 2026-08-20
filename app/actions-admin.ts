@@ -1,7 +1,7 @@
 "use server";
 
 import { isPlatformAdminEmail } from "@/lib/admin";
-import { formatMoney } from "@/lib/format";
+import { formatDisplayDateTime, formatMoney } from "@/lib/format";
 import prisma from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
@@ -238,7 +238,11 @@ export async function getAdminOverview() {
       email: u.email,
       organization: u.organization.name,
       createdAt: u.createdAt.toISOString(),
+      joinedAtLabel: formatDisplayDateTime(u.createdAt),
     })),
+    latestSignupLabel: users[0]
+      ? formatDisplayDateTime(users[0].createdAt)
+      : "—",
     recentInvoices: recentInvoices.map((inv) => ({
       id: inv.id,
       number: inv.number,

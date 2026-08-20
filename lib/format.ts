@@ -34,3 +34,18 @@ export function formatDisplayDate(
     year: "numeric",
   });
 }
+
+export function formatDisplayDateTime(
+  date: Date | string | null | undefined,
+): string {
+  if (!date) return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
