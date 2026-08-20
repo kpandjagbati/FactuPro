@@ -4,17 +4,19 @@ import { getClients } from "@/app/actions";
 import {
   convertQuoteToInvoice,
   deleteQuote,
+  duplicateQuote,
   emailQuote,
   getQuoteById,
   updateQuote,
 } from "@/app/actions-v2";
+import DocumentLinesEditor from "@/app/components/DocumentLinesEditor";
 import VATControl from "@/app/components/VATControl";
 import Wrapper from "@/app/components/Wrapper";
 import { handleEmailResult } from "@/lib/email-client";
 import { formatMoney, toDateInputValue } from "@/lib/format";
-import type { Client, Quote, QuoteLine, QuoteStatus, Totals } from "@/type";
+import type { Client, Quote, QuoteStatus, Totals } from "@/type";
 import { QUOTE_STATUS_LABELS, QUOTE_STATUSES } from "@/type";
-import { FileInput, Mail, Plus, Save, Trash } from "lucide-react";
+import { Copy, FileInput, Mail, Save, Trash } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -28,6 +30,7 @@ export default function QuoteDetailPage() {
   const [saving, setSaving] = useState(false);
   const [converting, setConverting] = useState(false);
   const [emailing, setEmailing] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -130,16 +133,18 @@ export default function QuoteDetailPage() {
     }
   };
 
-  const addLine = () => {
+  const handleDuplicate = async () => {
     if (!quote) return;
-    const line: QuoteLine = {
-      id: `temp-${Date.now()}`,
-      quoteId: quote.id,
-      description: "",
-      quantity: 1,
-      unitPrice: 0,
-    };
-    setQuote({ ...quote, lines: [...quote.lines, line] });
+    setDuplicating(true);
+    try {
+      const copy = await duplicateQuote(quote.id);
+      router.push(`/quote/${copy.id}`);
+    } catch (error) {
+      console.error(error);
+      alert("Impossible de dupliquer le devis.");
+    } finally {
+      setDuplicating(false);
+    }
   };
 
   if (notFound) {
@@ -161,7 +166,7 @@ export default function QuoteDetailPage() {
   return (
     <Wrapper>
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <p className="badge badge-ghost badge-lg uppercase">
+        <p className="badge badge-ghost badge-lg max-w-full whitespace-normal uppercase">
           {quote.number}
           <span className="ml-2 opacity-60">· {quote.name}</span>
         </p>
@@ -221,6 +226,19 @@ export default function QuoteDetailPage() {
               )}
             </button>
           )}
+          <button
+            className="btn btn-sm btn-ghost"
+            disabled={duplicating}
+            onClick={handleDuplicate}
+          >
+            {duplicating ? (
+              <span className="loading loading-spinner loading-sm" />
+            ) : (
+              <>
+                Dupliquer <Copy className="ml-1 w-4" />
+              </>
+            )}
+          </button>
           <button className="btn btn-sm btn-error" onClick={handleDelete}>
             <Trash className="w-4" />
           </button>
@@ -322,95 +340,33 @@ export default function QuoteDetailPage() {
                 setQuote({ ...quote, validUntil: e.target.value as unknown as Date })
               }
             />
+            <h2 className="badge badge-info">Notes</h2>
+            <textarea
+              className="textarea textarea-bordered w-full"
+              placeholder="Notes ou remarques…"
+              value={quote.notes || ""}
+              onChange={(e) => setQuote({ ...quote, notes: e.target.value })}
+            />
           </div>
         </div>
 
-        <div className="w-full rounded-xl bg-base-200 p-5 md:w-2/3">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="badge badge-info">Lignes</h2>
-            <button className="btn btn-sm btn-info" onClick={addLine}>
-              <Plus className="w-4" />
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Qté</th>
-                  <th>Description</th>
-                  <th>Prix</th>
-                  <th>Total</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {quote.lines.map((line, index) => (
-                  <tr key={line.id}>
-                    <td>
-                      <input
-                        type="number"
-                        className="input input-sm input-bordered w-20"
-                        value={line.quantity}
-                        onChange={(e) => {
-                          const lines = [...quote.lines];
-                          lines[index] = {
-                            ...line,
-                            quantity: parseInt(e.target.value, 10) || 0,
-                          };
-                          setQuote({ ...quote, lines });
-                        }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="input input-sm input-bordered w-full min-w-40"
-                        value={line.description}
-                        onChange={(e) => {
-                          const lines = [...quote.lines];
-                          lines[index] = {
-                            ...line,
-                            description: e.target.value,
-                          };
-                          setQuote({ ...quote, lines });
-                        }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        className="input input-sm input-bordered w-28"
-                        value={line.unitPrice}
-                        onChange={(e) => {
-                          const lines = [...quote.lines];
-                          lines[index] = {
-                            ...line,
-                            unitPrice: parseFloat(e.target.value) || 0,
-                          };
-                          setQuote({ ...quote, lines });
-                        }}
-                      />
-                    </td>
-                    <td className="whitespace-nowrap font-bold">
-                      {formatMoney(line.quantity * line.unitPrice, quote.currency)}
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn-circle btn-sm btn-info"
-                        onClick={() =>
-                          setQuote({
-                            ...quote,
-                            lines: quote.lines.filter((_, i) => i !== index),
-                          })
-                        }
-                      >
-                        <Trash className="w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="w-full md:w-2/3">
+          <DocumentLinesEditor
+            title="Lignes"
+            currency={quote.currency}
+            lines={quote.lines.map(({ id, description, quantity, unitPrice }) => ({
+              id,
+              description,
+              quantity,
+              unitPrice,
+            }))}
+            onChange={(next) =>
+              setQuote({
+                ...quote,
+                lines: next.map((line) => ({ ...line, quoteId: quote.id })),
+              })
+            }
+          />
         </div>
       </div>
     </Wrapper>

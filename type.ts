@@ -33,6 +33,7 @@ export type CompanyProfileInput = {
   taxId?: string | null;
   iban?: string | null;
   logoUrl?: string | null;
+  paymentTerms?: string | null;
 };
 
 export type ClientInput = {

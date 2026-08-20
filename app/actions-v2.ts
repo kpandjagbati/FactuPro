@@ -218,6 +218,7 @@ export async function updateQuote(quote: Quote) {
       clientName: quote.clientName,
       clientAddress: quote.clientAddress,
       clientEmail: quote.clientEmail || null,
+      notes: quote.notes || null,
       clientId: quote.clientId || null,
       quoteDate:
         quoteDate && !Number.isNaN(quoteDate.getTime()) ? quoteDate : null,
@@ -305,6 +306,7 @@ export async function convertQuoteToInvoice(quoteId: string) {
       clientName: quote.clientName,
       clientAddress: quote.clientAddress,
       clientEmail: quote.clientEmail,
+      notes: quote.notes,
       invoiceDate: new Date(),
       vatActive: quote.vatActive,
       vatRate: quote.vatRate,
@@ -499,4 +501,149 @@ export async function uploadCompanyLogo(formData: FormData) {
           : "Upload impossible. Réessayez avec une image plus légère.",
     };
   }
+}
+
+export async function duplicateQuote(quoteId: string) {
+  const user = await requireDbUser();
+
+  const source = await prisma.quote.findFirst({
+    where: { id: quoteId, organizationId: user.organizationId },
+    include: { lines: true },
+  });
+
+  if (!source) {
+    throw new Error("Devis introuvable");
+  }
+
+  const year = new Date().getFullYear();
+  const organization = await prisma.organization.update({
+    where: { id: user.organizationId },
+    data: { quoteCounter: { increment: 1 } },
+  });
+
+  const number = `DEV-${year}-${String(organization.quoteCounter).padStart(4, "0")}`;
+  const validUntil = new Date();
+  validUntil.setDate(validUntil.getDate() + 30);
+
+  const copyName =
+    source.name.length > 52 ? `${source.name.slice(0, 52)} (copie)` : `${source.name} (copie)`;
+
+  return prisma.quote.create({
+    data: {
+      organizationId: user.organizationId,
+      number,
+      name: copyName,
+      issuerName: source.issuerName,
+      issuerAddress: source.issuerAddress,
+      clientId: source.clientId,
+      clientName: source.clientName,
+      clientAddress: source.clientAddress,
+      clientEmail: source.clientEmail,
+      notes: source.notes,
+      quoteDate: new Date(),
+      validUntil,
+      vatActive: source.vatActive,
+      vatRate: source.vatRate,
+      status: "DRAFT",
+      currency: source.currency,
+      lines: {
+        create: source.lines.map((line) => ({
+          description: line.description,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+        })),
+      },
+    },
+    include: { lines: true, client: true },
+  });
+}
+
+export async function sendPaymentReminder(invoiceId: string, toEmail?: string) {
+  try {
+    const user = await requireDbUser();
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: invoiceId, organizationId: user.organizationId },
+      include: { lines: true, client: true },
+    });
+
+    if (!invoice) {
+      return { mode: "error" as const, message: "Facture introuvable" };
+    }
+
+    if (invoice.status !== "SENT" && invoice.status !== "OVERDUE") {
+      return {
+        mode: "error" as const,
+        message: "Les relances sont réservées aux factures en attente ou impayées.",
+      };
+    }
+
+    const to =
+      toEmail?.trim() ||
+      invoice.clientEmail ||
+      invoice.client?.email ||
+      "";
+
+    if (!to) {
+      return {
+        mode: "error" as const,
+        message: "Aucune adresse email client. Renseignez-en une dans la fiche facture.",
+      };
+    }
+
+    const { ttc } = calcTotal(invoice.lines, invoice.vatActive, invoice.vatRate);
+    const companyName =
+      user.organization.companyProfile?.name || user.organization.name;
+
+    return await sendDocumentEmail({
+      kind: "reminder",
+      to,
+      number: invoice.number,
+      name: invoice.name,
+      companyName,
+      totalTTC: ttc,
+      currency: invoice.currency,
+      dueDate: invoice.dueDate,
+    });
+  } catch (err) {
+    console.error("sendPaymentReminder", err);
+    return {
+      mode: "error" as const,
+      message:
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de l'envoi de la relance.",
+    };
+  }
+}
+
+export async function getOnboardingStatus() {
+  const user = await requireDbUser();
+  const profile = user.organization.companyProfile;
+
+  const [clientCount, invoiceCount] = await Promise.all([
+    prisma.client.count({ where: { organizationId: user.organizationId } }),
+    prisma.invoice.count({ where: { organizationId: user.organizationId } }),
+  ]);
+
+  const hasCompany = !!(profile?.name?.trim() && profile?.address?.trim());
+  const hasClient = clientCount > 0;
+  const hasInvoice = invoiceCount > 0;
+  const complete = hasCompany && hasClient && hasInvoice;
+
+  let progressLabel = "Configurez votre espace pour démarrer.";
+  if (hasCompany && !hasClient) {
+    progressLabel = "Ajoutez votre premier client.";
+  } else if (hasCompany && hasClient && !hasInvoice) {
+    progressLabel = "Créez votre première facture.";
+  } else if (complete) {
+    progressLabel = "Vous êtes prêt à facturer.";
+  }
+
+  return {
+    hasCompany,
+    hasClient,
+    hasInvoice,
+    complete,
+    progressLabel,
+  };
 }

@@ -111,6 +111,9 @@ export async function updateCompanyProfile(data: CompanyProfileInput) {
       taxId: data.taxId || null,
       iban: data.iban || null,
       ...(data.logoUrl !== undefined ? { logoUrl: data.logoUrl } : {}),
+      ...(data.paymentTerms !== undefined
+        ? { paymentTerms: data.paymentTerms || null }
+        : {}),
     },
     create: {
       organizationId: user.organizationId,
@@ -121,6 +124,7 @@ export async function updateCompanyProfile(data: CompanyProfileInput) {
       taxId: data.taxId || null,
       iban: data.iban || null,
       logoUrl: data.logoUrl || null,
+      paymentTerms: data.paymentTerms || null,
     },
   });
 
@@ -304,6 +308,7 @@ export async function updateInvoice(invoice: Invoice) {
       clientName: invoice.clientName,
       clientAddress: invoice.clientAddress,
       clientEmail: invoice.clientEmail || null,
+      notes: invoice.notes || null,
       clientId: invoice.clientId || null,
       invoiceDate: invoiceDate && !Number.isNaN(invoiceDate.getTime()) ? invoiceDate : null,
       dueDate: dueDate && !Number.isNaN(dueDate.getTime()) ? dueDate : null,
@@ -400,6 +405,61 @@ export async function applyClientToInvoice(invoiceId: string, clientId: string) 
       clientId: client.id,
       clientName: client.name,
       clientAddress: client.address || "",
+    },
+    include: { lines: true, client: true },
+  });
+}
+
+export async function duplicateInvoice(invoiceId: string) {
+  const user = await requireDbUser();
+
+  const source = await prisma.invoice.findFirst({
+    where: { id: invoiceId, organizationId: user.organizationId },
+    include: { lines: true },
+  });
+
+  if (!source) {
+    throw new Error("Facture introuvable");
+  }
+
+  const year = new Date().getFullYear();
+  const organization = await prisma.organization.update({
+    where: { id: user.organizationId },
+    data: { invoiceCounter: { increment: 1 } },
+  });
+
+  const number = `FAC-${year}-${String(organization.invoiceCounter).padStart(4, "0")}`;
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 30);
+
+  const copyName =
+    source.name.length > 52 ? `${source.name.slice(0, 52)} (copie)` : `${source.name} (copie)`;
+
+  return prisma.invoice.create({
+    data: {
+      organizationId: user.organizationId,
+      number,
+      name: copyName,
+      issuerName: source.issuerName,
+      issuerAddress: source.issuerAddress,
+      clientId: source.clientId,
+      clientName: source.clientName,
+      clientAddress: source.clientAddress,
+      clientEmail: source.clientEmail,
+      notes: source.notes,
+      invoiceDate: new Date(),
+      dueDate,
+      vatActive: source.vatActive,
+      vatRate: source.vatRate,
+      status: "DRAFT",
+      currency: source.currency,
+      lines: {
+        create: source.lines.map((line) => ({
+          description: line.description,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+        })),
+      },
     },
     include: { lines: true, client: true },
   });

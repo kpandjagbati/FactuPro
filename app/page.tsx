@@ -51,7 +51,7 @@ export default function LandingPage() {
       <section className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 md:grid-cols-2 md:py-24">
         <div>
           <p className="badge badge-info badge-outline mb-4">Nouveau SaaS · V1</p>
-          <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">
+          <h1 className="text-3xl font-extrabold leading-tight sm:text-4xl md:text-5xl">
             Facturez simplement,{" "}
             <span className="text-info">en français et en XOF</span>
           </h1>

@@ -1,6 +1,8 @@
 "use client";
 
 import Wrapper from "@/app/components/Wrapper";
+import ExportExcelButton from "@/app/components/ExportExcelButton";
+import { exportClientsExcel } from "@/app/actions-export";
 import type { Client, ClientInput } from "@/type";
 import { Pencil, Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -93,12 +95,17 @@ export default function ClientsPage() {
   return (
     <Wrapper>
       <div className="flex flex-col space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-lg font-bold">Clients</h1>
-          <button className="btn btn-info btn-sm" onClick={openCreateModal}>
+          <div className="flex flex-wrap gap-2">
+            {!loading && clients.length > 0 && (
+              <ExportExcelButton exportFn={exportClientsExcel} />
+            )}
+            <button className="btn btn-info btn-sm w-full sm:w-auto" onClick={openCreateModal}>
             <Plus className="w-4" />
             Ajouter
           </button>
+          </div>
         </div>
 
         {loading ? (
@@ -108,47 +115,99 @@ export default function ClientsPage() {
             Aucun client pour le moment. Ajoutez votre premier client.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl bg-base-200">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>Email</th>
-                  <th>Téléphone</th>
-                  <th>IFU / NIF</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map((client) => (
-                  <tr key={client.id}>
-                    <td className="font-medium">{client.name}</td>
-                    <td>{client.email || "—"}</td>
-                    <td>{client.phone || "—"}</td>
-                    <td>{client.taxId || "—"}</td>
-                    <td className="flex gap-2">
+          <>
+            <div className="space-y-3 md:hidden">
+              {clients.map((client) => (
+                <div
+                  key={client.id}
+                  className="rounded-xl bg-base-200 p-4"
+                >
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{client.name}</p>
+                      <p className="truncate text-sm text-base-content/65">
+                        {client.email || "—"}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
                       <button
+                        type="button"
                         className="btn btn-ghost btn-sm"
                         onClick={() => openEditModal(client)}
+                        aria-label="Modifier"
                       >
-                        <Pencil className="w-4" />
+                        <Pencil className="h-4 w-4" />
                       </button>
                       <button
+                        type="button"
                         className="btn btn-ghost btn-sm text-error"
                         onClick={() => handleDelete(client.id)}
+                        aria-label="Supprimer"
                       >
-                        <Trash className="w-4" />
+                        <Trash className="h-4 w-4" />
                       </button>
-                    </td>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-base-content/50">Tél.</span>
+                      <p>{client.phone || "—"}</p>
+                    </div>
+                    <div>
+                      <span className="text-base-content/50">IFU / NIF</span>
+                      <p className="truncate">{client.taxId || "—"}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-xl bg-base-200 md:block">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th>Téléphone</th>
+                    <th>IFU / NIF</th>
+                    <th />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {clients.map((client) => (
+                    <tr key={client.id}>
+                      <td className="font-medium">{client.name}</td>
+                      <td>{client.email || "—"}</td>
+                      <td>{client.phone || "—"}</td>
+                      <td>{client.taxId || "—"}</td>
+                      <td>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => openEditModal(client)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm text-error"
+                            onClick={() => handleDelete(client.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         <dialog id="client_modal" className="modal">
-          <div className="modal-box">
+          <div className="modal-box w-11/12 max-w-lg">
             <form method="dialog">
               <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
                 ✕

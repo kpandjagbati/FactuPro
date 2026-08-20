@@ -8,17 +8,22 @@ export function handleEmailResult(
     | { mode: "resend"; to: string }
     | { mode: "mailto"; to: string; subject: string; body: string }
     | { mode: "error"; message: string },
-  docLabel: "facture" | "devis",
+  docLabel: "facture" | "devis" | "relance",
 ) {
   if (result.mode === "error") {
     alert(result.message);
     return "error" as const;
   }
 
+  const sentLabel =
+    docLabel === "facture"
+      ? "Facture"
+      : docLabel === "devis"
+        ? "Devis"
+        : "Relance";
+
   if (result.mode === "resend") {
-    alert(
-      `${docLabel === "facture" ? "Facture" : "Devis"} envoyé(e) à ${result.to}`,
-    );
+    alert(`${sentLabel} envoyé(e) à ${result.to}`);
     return "resend" as const;
   }
 

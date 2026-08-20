@@ -7,18 +7,19 @@ import Wrapper from "@/app/components/Wrapper";
 import { formatMoney } from "@/lib/format";
 import type { Client, CompanyProfile, Invoice, InvoiceStatus, Totals } from "@/type";
 import { INVOICE_STATUS_LABELS, INVOICE_STATUSES } from "@/type";
-import { Mail, Save, Trash } from "lucide-react";
+import { BellRing, Copy, Mail, Save, Trash } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   deleteInvoice,
+  duplicateInvoice,
   getClients,
   getCompanyProfile,
   getInvoiceById,
   updateInvoice,
 } from "@/app/actions";
-import { emailInvoice } from "@/app/actions-v2";
+import { emailInvoice, sendPaymentReminder } from "@/app/actions-v2";
 import { handleEmailResult } from "@/lib/email-client";
 
 const InvoicePDF = dynamic(() => import("@/app/components/InvoicePDF"), {
@@ -41,6 +42,8 @@ export default function InvoiceDetailPage() {
   const [isSaveDisabled, setIsSaveDisabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [emailing, setEmailing] = useState(false);
+  const [reminding, setReminding] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   const fetchInvoice = async () => {
@@ -152,6 +155,42 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleReminder = async () => {
+    if (!invoice) return;
+    if (!isSaveDisabled) {
+      alert("Sauvegardez la facture avant d'envoyer une relance.");
+      return;
+    }
+    if (invoice.status !== "SENT" && invoice.status !== "OVERDUE") {
+      alert("Les relances concernent les factures en attente ou impayées.");
+      return;
+    }
+    setReminding(true);
+    try {
+      const result = await sendPaymentReminder(invoice.id);
+      handleEmailResult(result, "relance");
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de l'envoi de la relance.");
+    } finally {
+      setReminding(false);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!invoice) return;
+    setDuplicating(true);
+    try {
+      const copy = await duplicateInvoice(invoice.id);
+      router.push(`/invoice/${copy.id}`);
+    } catch (error) {
+      console.error(error);
+      alert("Impossible de dupliquer la facture.");
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
   const handleSelectClient = (clientId: string) => {
     if (!invoice) return;
     const client = clients.find((c) => c.id === clientId);
@@ -189,7 +228,7 @@ export default function InvoiceDetailPage() {
     <Wrapper>
       <div>
         <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between">
-          <p className="badge badge-ghost badge-lg uppercase">
+          <p className="badge badge-ghost badge-lg max-w-full whitespace-normal uppercase">
             {invoice.number}
             <span className="ml-2 opacity-60">· {invoice.name}</span>
           </p>
@@ -232,6 +271,38 @@ export default function InvoiceDetailPage() {
                 <>
                   Email
                   <Mail className="ml-2 w-4" />
+                </>
+              )}
+            </button>
+
+            {(invoice.status === "SENT" || invoice.status === "OVERDUE") && (
+              <button
+                className="btn btn-sm btn-warning"
+                disabled={reminding}
+                onClick={handleReminder}
+              >
+                {reminding ? (
+                  <span className="loading loading-spinner loading-sm" />
+                ) : (
+                  <>
+                    Relance
+                    <BellRing className="ml-2 w-4" />
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              className="btn btn-sm btn-ghost"
+              disabled={duplicating}
+              onClick={handleDuplicate}
+            >
+              {duplicating ? (
+                <span className="loading loading-spinner loading-sm" />
+              ) : (
+                <>
+                  Dupliquer
+                  <Copy className="ml-2 w-4" />
                 </>
               )}
             </button>

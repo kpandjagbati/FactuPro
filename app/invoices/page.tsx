@@ -2,6 +2,9 @@
 
 import Wrapper from "@/app/components/Wrapper";
 import InvoiceComponent from "@/app/components/InvoiceComponent";
+import ExportExcelButton from "@/app/components/ExportExcelButton";
+import OnboardingBanner from "@/app/components/OnboardingBanner";
+import { exportInvoicesExcel } from "@/app/actions-export";
 import { createEmptyInvoice, getInvoices } from "@/app/actions";
 import type { Invoice, InvoiceStatus } from "@/type";
 import { INVOICE_STATUS_LABELS, INVOICE_STATUSES } from "@/type";
@@ -81,7 +84,14 @@ export default function InvoicesPage() {
   return (
     <Wrapper>
       <div className="flex flex-col space-y-4">
-        <h1 className="text-lg font-bold">Mes factures</h1>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-lg font-bold">Mes factures</h1>
+          {!loading && invoices.length > 0 && (
+            <ExportExcelButton exportFn={exportInvoicesExcel} />
+          )}
+        </div>
+
+        <OnboardingBanner />
 
         {loading ? (
           <span className="loading loading-spinner loading-md text-info" />
@@ -139,7 +149,7 @@ export default function InvoicesPage() {
         </div>
 
         <dialog id="create_invoice_modal" className="modal">
-          <div className="modal-box">
+          <div className="modal-box w-11/12 max-w-lg">
             <form method="dialog">
               <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
                 ✕

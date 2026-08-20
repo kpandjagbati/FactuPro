@@ -60,6 +60,7 @@ model CompanyProfile {
   taxId          String?
   iban           String?
   logoUrl        String?
+  paymentTerms   String?      @default("Paiement à 30 jours à compter de la date de facture.")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 }
@@ -96,6 +97,7 @@ model Invoice {
   clientName     String        @default("")
   clientAddress  String        @default("")
   clientEmail    String?
+  notes          String?
   invoiceDate    DateTime?
   dueDate        DateTime?
   vatActive      Boolean       @default(false)
@@ -137,6 +139,7 @@ model Quote {
   clientName     String      @default("")
   clientAddress  String      @default("")
   clientEmail    String?
+  notes          String?
   quoteDate      DateTime?
   validUntil     DateTime?
   vatActive      Boolean     @default(false)

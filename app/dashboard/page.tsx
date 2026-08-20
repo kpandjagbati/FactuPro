@@ -1,7 +1,10 @@
 "use client";
 
 import { getDashboardStats } from "@/app/actions-v2";
+import { exportDashboardExcel } from "@/app/actions-export";
 import InvoiceComponent from "@/app/components/InvoiceComponent";
+import ExportExcelButton from "@/app/components/ExportExcelButton";
+import OnboardingBanner from "@/app/components/OnboardingBanner";
 import Wrapper from "@/app/components/Wrapper";
 import { formatMoney } from "@/lib/format";
 import type { DashboardStats } from "@/type";
@@ -34,9 +37,15 @@ export default function DashboardPage() {
   return (
     <Wrapper>
       <div className="flex flex-col space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-lg font-bold">Dashboard</h1>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {!loading && stats && (
+              <ExportExcelButton
+                exportFn={exportDashboardExcel}
+                label="Rapport Excel"
+              />
+            )}
             <Link href="/invoices" className="btn btn-sm btn-ghost">
               Factures
             </Link>
@@ -45,6 +54,8 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        <OnboardingBanner />
 
         {loading || !stats ? (
           <span className="loading loading-spinner loading-md text-info" />

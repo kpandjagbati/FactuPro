@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { formatMoney } from "@/lib/format";
 
-export type DocumentEmailKind = "invoice" | "quote";
+export type DocumentEmailKind = "invoice" | "quote" | "reminder";
 
 type SendDocumentEmailParams = {
   kind: DocumentEmailKind;
@@ -12,6 +12,7 @@ type SendDocumentEmailParams = {
   totalTTC: number;
   currency: string;
   fromEmail?: string;
+  dueDate?: Date | string | null;
 };
 
 export type EmailSendResult =
@@ -20,9 +21,53 @@ export type EmailSendResult =
   | { mode: "error"; message: string };
 
 function buildCopy(params: SendDocumentEmailParams) {
+  const total = formatMoney(params.totalTTC, params.currency);
+  const dueLabel =
+    params.dueDate && params.kind === "reminder"
+      ? new Date(params.dueDate).toLocaleDateString("fr-FR", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        })
+      : null;
+
+  if (params.kind === "reminder") {
+    const subject = `Relance — Facture ${params.number} — ${params.companyName}`;
+    const body = [
+      "Bonjour,",
+      "",
+      `Sauf erreur de notre part, la facture ${params.number} (${params.name}) d'un montant de ${total} reste impayée.`,
+      dueLabel ? `Date d'échéance : ${dueLabel}.` : "",
+      "",
+      "Merci de procéder au règlement dans les meilleurs délais.",
+      "",
+      "Cordialement,",
+      params.companyName,
+      "via FactuPro",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const html = `
+      <div style="font-family: sans-serif; line-height: 1.5;">
+        <h2 style="color:#ea580c;">Relance de paiement</h2>
+        <p>Bonjour,</p>
+        <p>
+          Sauf erreur de notre part, la facture <strong>${params.number}</strong>
+          (<strong>${params.name}</strong>) d'un montant de
+          <strong>${total}</strong> reste impayée.
+        </p>
+        ${dueLabel ? `<p>Date d'échéance : <strong>${dueLabel}</strong>.</p>` : ""}
+        <p>Merci de procéder au règlement dans les meilleurs délais.</p>
+        <p>Cordialement,<br/>${params.companyName}<br/><em>via FactuPro</em></p>
+      </div>
+    `;
+
+    return { label: "Relance", subject, body, html };
+  }
+
   const label = params.kind === "invoice" ? "Facture" : "Devis";
   const subject = `${label} ${params.number} — ${params.companyName}`;
-  const total = formatMoney(params.totalTTC, params.currency);
   const body = [
     "Bonjour,",
     "",

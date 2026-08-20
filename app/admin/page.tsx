@@ -170,7 +170,7 @@ export default function AdminHomePage() {
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <div className="rounded-xl border border-warning/30 bg-base-200 p-4">
           <div className="text-sm opacity-70">En attente de paiement</div>
           <div className="mt-1 text-xl font-bold">{data.pendingTotalLabel}</div>

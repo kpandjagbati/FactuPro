@@ -1,4 +1,4 @@
-"use client";
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              "use client";
 
 import {
   getCompanyProfile,
@@ -18,6 +18,7 @@ const emptyForm: CompanyProfileInput = {
   taxId: "",
   iban: "",
   logoUrl: "",
+  paymentTerms: "",
 };
 
 export default function EntreprisePage() {
@@ -39,6 +40,7 @@ export default function EntreprisePage() {
           taxId: profile.taxId || "",
           iban: profile.iban || "",
           logoUrl: profile.logoUrl || "",
+          paymentTerms: profile.paymentTerms || "",
         });
       } catch (error) {
         console.error(error);
@@ -187,6 +189,20 @@ export default function EntreprisePage() {
                 className="input input-bordered w-full"
                 value={form.iban || ""}
                 onChange={(e) => setForm({ ...form, iban: e.target.value })}
+              />
+            </label>
+
+            <label className="form-control w-full">
+              <span className="label-text mb-1 font-medium">
+                Conditions de paiement (PDF)
+              </span>
+              <textarea
+                className="textarea textarea-bordered w-full"
+                placeholder="Ex. Paiement à 30 jours à compter de la date de facture."
+                value={form.paymentTerms || ""}
+                onChange={(e) =>
+                  setForm({ ...form, paymentTerms: e.target.value })
+                }
               />
             </label>
 

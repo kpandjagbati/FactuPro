@@ -104,20 +104,21 @@ const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
           <ArrowDownFromLine className="w-4" />
         </button>
 
-        <div className="overflow-x-auto bg-base-200/40 p-4">
-          <div
-            ref={factureRef}
-            style={{
-              width: 794,
-              margin: "0 auto",
-              background: "#ffffff",
-              color: INK,
-              fontFamily:
-                'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
-              padding: 40,
-              boxSizing: "border-box",
-            }}
-          >
+        <div className="overflow-x-auto bg-base-200/40 p-2 sm:p-4">
+          <div className="pdf-preview-scale mx-auto w-fit max-w-full">
+            <div
+              ref={factureRef}
+              className="pdf-preview-page"
+              style={{
+                width: 794,
+                background: "#ffffff",
+                color: INK,
+                fontFamily:
+                  'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+                padding: 40,
+                boxSizing: "border-box",
+              }}
+            >
             {/* Bandeau */}
             <div
               style={{
@@ -434,6 +435,84 @@ const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
               </div>
             </div>
 
+            {/* Notes & conditions */}
+            {(invoice.notes || company?.paymentTerms) && (
+              <div
+                style={{
+                  marginTop: 28,
+                  display: "grid",
+                  gridTemplateColumns: invoice.notes && company?.paymentTerms ? "1fr 1fr" : "1fr",
+                  gap: 16,
+                }}
+              >
+                {company?.paymentTerms && (
+                  <div
+                    style={{
+                      border: `1px solid ${LINE}`,
+                      borderRadius: 12,
+                      padding: 14,
+                      background: SOFT,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 800,
+                        color: BLUE,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Conditions de paiement
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: MUTED,
+                        whiteSpace: "pre-wrap",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {company.paymentTerms}
+                    </div>
+                  </div>
+                )}
+                {invoice.notes && (
+                  <div
+                    style={{
+                      border: `1px solid ${LINE}`,
+                      borderRadius: 12,
+                      padding: 14,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 800,
+                        color: BLUE,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Notes
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: MUTED,
+                        whiteSpace: "pre-wrap",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {invoice.notes}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Pied */}
             <div
               style={{
@@ -450,6 +529,7 @@ const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
               {company?.phone ? ` Tél. ${company.phone}.` : ""}
               {company?.email ? ` ${company.email}` : ""}
             </div>
+          </div>
           </div>
         </div>
       </div>

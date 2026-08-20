@@ -92,6 +92,14 @@ const InvoiceInfo = ({
           className="input input-bordered w-full"
           onChange={(e) => handleInputChange(e, "dueDate")}
         />
+
+        <h2 className="badge badge-info">Notes (PDF)</h2>
+        <textarea
+          value={invoice.notes || ""}
+          placeholder="Notes ou remarques affichées sur la facture PDF…"
+          className="textarea textarea-bordered h-24 w-full resize-none"
+          onChange={(e) => handleInputChange(e, "notes")}
+        />
       </div>
     </div>
   );
