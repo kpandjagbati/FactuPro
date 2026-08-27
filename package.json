@@ -9,7 +9,11 @@
     "lint": "eslint",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "load:k6:smoke": "node load-tests/k6/run.mjs smoke",
+    "load:k6:load": "node load-tests/k6/run.mjs load",
+    "load:ab": "bash load-tests/ab/run-ab.sh",
+    "load:ab:node": "node load-tests/ab/run-ab-node.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.22",

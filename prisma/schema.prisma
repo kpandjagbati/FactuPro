@@ -45,6 +45,8 @@ model Organization {
   clients        Client[]
   invoices       Invoice[]
   quotes         Quote[]
+  products       Product[]
+  expenses       Expense[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 }
@@ -82,36 +84,72 @@ model Client {
   @@index([organizationId])
 }
 
-model Invoice {
-  id             String        @id @default(cuid())
+model Product {
+  id             String       @id @default(cuid())
   organizationId String
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  unitPrice      Float        @default(0)
+  unit           String       @default("unité")
+  category       String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model Expense {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  amount         Float
+  category       String       @default("Autre")
+  expenseDate    DateTime     @default(now())
+  receiptUrl     String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([expenseDate])
+}
+
+model Invoice {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   clientId       String?
-  client         Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  quoteId        String?       @unique
-  quote          Quote?        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  client         Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  quoteId        String?        @unique
+  quote          Quote?         @relation(fields: [quoteId], references: [id], onDelete: SetNull)
   number         String
   name           String
-  issuerName     String        @default("")
-  issuerAddress  String        @default("")
-  clientName     String        @default("")
-  clientAddress  String        @default("")
+  issuerName     String         @default("")
+  issuerAddress  String         @default("")
+  clientName     String         @default("")
+  clientAddress  String         @default("")
   clientEmail    String?
   notes          String?
   invoiceDate    DateTime?
   dueDate        DateTime?
-  vatActive      Boolean       @default(false)
-  vatRate        Float         @default(18)
-  status         InvoiceStatus @default(DRAFT)
-  currency       String        @default("XOF")
+  vatActive      Boolean        @default(false)
+  vatRate        Float          @default(18)
+  status         InvoiceStatus  @default(DRAFT)
+  currency       String         @default("XOF")
+  publicToken    String?        @unique
+  viewedAt       DateTime?
   lines          InvoiceLine[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  payments       Payment[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@unique([organizationId, number])
   @@index([organizationId])
   @@index([status])
   @@index([dueDate])
+  @@index([publicToken])
 }
 
 model InvoiceLine {
@@ -125,34 +163,54 @@ model InvoiceLine {
   @@index([invoiceId])
 }
 
+model Payment {
+  id            String   @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentDate   DateTime @default(now())
+  paymentMethod String   @default("Virement")
+  reference     String?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  @@index([invoiceId])
+}
+
 model Quote {
-  id             String      @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   clientId       String?
-  client         Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  client         Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
   invoice        Invoice?
   number         String
   name           String
-  issuerName     String      @default("")
-  issuerAddress  String      @default("")
-  clientName     String      @default("")
-  clientAddress  String      @default("")
+  issuerName     String       @default("")
+  issuerAddress  String       @default("")
+  clientName     String       @default("")
+  clientAddress  String       @default("")
   clientEmail    String?
   notes          String?
   quoteDate      DateTime?
   validUntil     DateTime?
-  vatActive      Boolean     @default(false)
-  vatRate        Float       @default(18)
-  status         QuoteStatus @default(DRAFT)
-  currency       String      @default("XOF")
+  vatActive      Boolean      @default(false)
+  vatRate        Float        @default(18)
+  status         QuoteStatus  @default(DRAFT)
+  currency       String       @default("XOF")
+  publicToken    String?      @unique
+  viewedAt       DateTime?
+  signedAt       DateTime?
+  signedByName   String?
+  signatureData  String?
   lines          QuoteLine[]
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@unique([organizationId, number])
   @@index([organizationId])
   @@index([status])
+  @@index([publicToken])
 }
 
 model QuoteLine {

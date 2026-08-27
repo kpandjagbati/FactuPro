@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { getProducts } from "@/app/actions-products";
 import { formatMoney } from "@/lib/format";
-import { Plus, Trash } from "lucide-react";
+import type { Product } from "@/type";
+import { Package, Plus, Trash } from "lucide-react";
 
 export type EditableLine = {
   id: string;
@@ -25,6 +28,15 @@ export default function DocumentLinesEditor({
   onChange,
   emptyMessage = "Aucune ligne. Cliquez sur + pour en ajouter.",
 }: Props) {
+  const [catalog, setCatalog] = useState<Product[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
+
+  useEffect(() => {
+    getProducts()
+      .then((items) => setCatalog(items))
+      .catch((err) => console.error("Catalog load error:", err));
+  }, []);
+
   const addLine = () => {
     onChange([
       ...lines,
@@ -35,6 +47,23 @@ export default function DocumentLinesEditor({
         unitPrice: 0,
       },
     ]);
+  };
+
+  const handleInsertProduct = (productId: string) => {
+    if (!productId) return;
+    const prod = catalog.find((p) => p.id === productId);
+    if (!prod) return;
+
+    onChange([
+      ...lines,
+      {
+        id: `temp-${Date.now()}`,
+        description: prod.name + (prod.description ? ` - ${prod.description}` : ""),
+        quantity: 1,
+        unitPrice: prod.unitPrice,
+      },
+    ]);
+    setSelectedProductId("");
   };
 
   const updateLine = (index: number, patch: Partial<EditableLine>) => {
@@ -49,20 +78,49 @@ export default function DocumentLinesEditor({
 
   return (
     <div className="h-fit w-full rounded-xl bg-base-200 p-4 sm:p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="badge badge-info">{title}</h2>
-        <button
-          type="button"
-          className="btn btn-sm btn-info shrink-0"
-          onClick={addLine}
-          aria-label="Ajouter une ligne"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
+
+        <div className="flex items-center gap-2">
+          {catalog.length > 0 && (
+            <div className="relative">
+              <select
+                value={selectedProductId}
+                onChange={(e) => handleInsertProduct(e.target.value)}
+                className="select select-bordered select-xs sm:select-sm text-xs"
+              >
+                <option value="">+ Insérer du catalogue...</option>
+                {catalog.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({formatMoney(p.unitPrice, currency)})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-sm btn-info shrink-0"
+            onClick={addLine}
+            aria-label="Ajouter une ligne"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Ligne</span>
+          </button>
+        </div>
       </div>
 
       {lines.length === 0 ? (
-        <p className="py-6 text-center text-sm text-base-content/60">{emptyMessage}</p>
+        <div className="py-6 text-center text-sm text-base-content/60">
+          <p>{emptyMessage}</p>
+          {catalog.length > 0 && (
+            <p className="mt-2 text-xs text-info flex items-center justify-center gap-1">
+              <Package className="h-3.5 w-3.5" />
+              Vous avez {catalog.length} article(s) dans votre catalogue prêts à être insérés.
+            </p>
+          )}
+        </div>
       ) : (
         <>
           {/* Mobile : cartes */}
@@ -208,7 +266,7 @@ export default function DocumentLinesEditor({
                       <button
                         type="button"
                         onClick={() => removeLine(index)}
-                        className="btn btn-sm btn-circle btn-info"
+                        className="btn btn-sm btn-circle btn-ghost text-error"
                         aria-label="Supprimer la ligne"
                       >
                         <Trash className="h-4 w-4" />

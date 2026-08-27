@@ -37,13 +37,17 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const orgId = user.organizationId;
   const currency = user.organization.currency || "XOF";
 
-  const [invoices, quotes] = await Promise.all([
+  const [invoices, quotes, expenses] = await Promise.all([
     prisma.invoice.findMany({
       where: { organizationId: orgId },
       include: { lines: true, client: true },
       orderBy: { createdAt: "desc" },
     }),
     prisma.quote.count({ where: { organizationId: orgId } }),
+    prisma.expense.findMany({
+      where: { organizationId: orgId },
+      orderBy: { expenseDate: "desc" },
+    }),
   ]);
 
   let paidTotal = 0;
@@ -62,6 +66,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   }
   const monthlyPaid = new Map(monthKeys.map((k) => [k, 0]));
+  const monthlyExp = new Map(monthKeys.map((k) => [k, 0]));
   const monthlyCount = new Map(monthKeys.map((k) => [k, 0]));
 
   for (const invoice of invoices) {
@@ -95,6 +100,18 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }
   }
 
+  let totalExpenses = 0;
+  for (const expense of expenses) {
+    totalExpenses += expense.amount;
+    const expDate = new Date(expense.expenseDate);
+    const key = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, "0")}`;
+    if (monthlyExp.has(key)) {
+      monthlyExp.set(key, (monthlyExp.get(key) || 0) + expense.amount);
+    }
+  }
+
+  const netMargin = paidTotal - totalExpenses;
+
   const monthLabel = (key: string) => {
     const [y, m] = key.split("-").map(Number);
     return new Date(y, m - 1, 1).toLocaleDateString("fr-FR", {
@@ -124,12 +141,19 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     pendingCount,
     pendingTotal,
     draftCount,
+    totalExpenses,
+    netMargin,
     currency,
     topClients,
     recentInvoices: invoices.slice(0, 5),
+    recentExpenses: expenses.slice(0, 5),
     monthlyRevenue: monthKeys.map((key) => ({
       label: monthLabel(key),
       total: monthlyPaid.get(key) || 0,
+    })),
+    monthlyExpenses: monthKeys.map((key) => ({
+      label: monthLabel(key),
+      total: monthlyExp.get(key) || 0,
     })),
     monthlyInvoices: monthKeys.map((key) => ({
       label: monthLabel(key),

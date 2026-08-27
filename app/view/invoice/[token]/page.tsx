@@ -1,0 +1,93 @@
+import { getPublicInvoice } from "@/app/actions-portal";
+import { formatDisplayDate, formatMoney } from "@/lib/format";
+import {
+  CheckCircle,
+  Clock,
+  Download,
+  FileText,
+  LayersPlus,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import PublicInvoiceView from "@/app/components/PublicInvoiceView";
+
+interface PageProps {
+  params: Promise<{ token: string }>;
+}
+
+export default async function PublicInvoicePage({ params }: PageProps) {
+  const { token } = await params;
+  const invoice = await getPublicInvoice(token);
+
+  if (!invoice) {
+    notFound();
+  }
+
+  const company = invoice.organization.companyProfile;
+  const totalHT = invoice.lines.reduce(
+    (acc, l) => acc + l.quantity * l.unitPrice,
+    0,
+  );
+  const totalVAT = invoice.vatActive ? totalHT * (invoice.vatRate / 100) : 0;
+  const totalTTC = totalHT + totalVAT;
+
+  const totalPaid = (invoice.payments || []).reduce(
+    (acc, p) => acc + p.amount,
+    0,
+  );
+  const remainingDue = Math.max(0, totalTTC - totalPaid);
+
+  return (
+    <div className="min-h-screen bg-base-200/50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl space-y-6">
+        {/* Barre d'en-tête client */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl bg-base-100 p-4 sm:p-5 shadow-sm border border-base-300">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-info p-2 text-info-content">
+              <LayersPlus className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase text-info">
+                Portail Client Sécurisé
+              </div>
+              <h1 className="text-lg font-bold">
+                Facture {invoice.number}
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {invoice.status === "PAID" || remainingDue === 0 ? (
+              <span className="badge badge-success gap-1 text-xs py-3 px-3">
+                <CheckCircle className="h-4 w-4" /> Payée
+              </span>
+            ) : invoice.status === "OVERDUE" ? (
+              <span className="badge badge-error gap-1 text-xs py-3 px-3">
+                <XCircle className="h-4 w-4" /> Impayée
+              </span>
+            ) : (
+              <span className="badge badge-warning gap-1 text-xs py-3 px-3">
+                <Clock className="h-4 w-4" /> En attente de règlement
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Détail de la facture & téléchargement */}
+        <PublicInvoiceView
+          invoice={invoice}
+          totals={{ totalHT, totalVAT, totalTTC, totalPaid, remainingDue }}
+          company={company}
+        />
+
+        {/* Pied de page public */}
+        <div className="text-center text-xs text-base-content/50 py-4 flex items-center justify-center gap-1.5">
+          <ShieldCheck className="h-4 w-4 text-info" />
+          Document officiel généré de manière sécurisée avec FactuPro
+        </div>
+      </div>
+    </div>
+  );
+}

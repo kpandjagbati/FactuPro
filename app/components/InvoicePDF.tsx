@@ -6,7 +6,7 @@ import confetti from "canvas-confetti";
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { ArrowDownFromLine, LayersPlus } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 interface FacturePDFProps {
   invoice: Invoice;
@@ -14,40 +14,63 @@ interface FacturePDFProps {
   company?: CompanyProfile | null;
 }
 
-const BLUE = "#0284c7";
-const INK = "#0f172a";
-const MUTED = "#64748b";
-const LINE = "#e2e8f0";
-const SOFT = "#f8fafc";
-
 const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
   const factureRef = useRef<HTMLDivElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const logoSrc = company?.logoUrl?.startsWith("data:")
     ? company.logoUrl
     : company?.logoUrl?.split("?")[0];
 
   const handleDownloadPdf = async () => {
     const element = factureRef.current;
-    if (!element) return;
+    if (!element || isGenerating) return;
+
+    setIsGenerating(true);
+    let wrapper: HTMLDivElement | null = null;
 
     try {
-      const canvas = await html2canvas(element, {
+      const clone = element.cloneNode(true) as HTMLDivElement;
+      
+      wrapper = document.createElement("div");
+      wrapper.style.position = "fixed";
+      wrapper.style.top = "-99999px";
+      wrapper.style.left = "-99999px";
+      wrapper.style.width = "794px";
+      wrapper.style.zIndex = "-9999";
+      wrapper.style.transform = "none";
+      wrapper.style.margin = "0";
+      wrapper.style.padding = "0";
+
+      clone.style.transform = "none";
+      clone.style.width = "794px";
+      clone.style.margin = "0";
+
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
+        width: 794,
+        windowWidth: 1024,
       });
+
       const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: "A4",
+        format: "a4",
       });
 
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 8;
+      const margin = 10;
       const usableWidth = pageWidth - margin * 2;
       const imgHeight = (canvas.height * usableWidth) / canvas.width;
 
@@ -64,7 +87,7 @@ const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
         heightLeft -= pageHeight - margin * 2;
       }
 
-      pdf.save(`facture-${invoice.number}.pdf`);
+      pdf.save(`facture-${invoice.number || "sans-numero"}.pdf`);
 
       confetti({
         particleCount: 100,
@@ -74,462 +97,520 @@ const InvoicePDF = ({ invoice, totals, company }: FacturePDFProps) => {
       });
     } catch (error) {
       console.error("Erreur lors de la génération du PDF :", error);
+    } finally {
+      if (wrapper && wrapper.parentNode) {
+        wrapper.parentNode.removeChild(wrapper);
+      }
+      setIsGenerating(false);
     }
-  };
-
-  const cell: React.CSSProperties = {
-    padding: "10px 12px",
-    borderBottom: `1px solid ${LINE}`,
-    fontSize: 13,
-    color: INK,
-    verticalAlign: "top",
-  };
-
-  const th: React.CSSProperties = {
-    ...cell,
-    background: SOFT,
-    color: MUTED,
-    fontSize: 11,
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.04em",
-    borderBottom: `2px solid ${LINE}`,
   };
 
   return (
     <div className="mt-4 block">
-      <div className="rounded-xl border-2 border-dashed border-base-300 p-5">
-        <button onClick={handleDownloadPdf} className="btn btn-sm btn-info mb-4">
-          Facture PDF
+      <div className="border-2 border-dashed border-base-300 p-5">
+        <button
+          onClick={handleDownloadPdf}
+          disabled={isGenerating}
+          className="btn btn-sm btn-info mb-4 rounded-none"
+        >
+          {isGenerating ? "Génération..." : "Facture PDF"}
           <ArrowDownFromLine className="w-4" />
         </button>
 
         <div className="overflow-x-auto bg-base-200/40 p-2 sm:p-4">
           <div className="pdf-preview-scale mx-auto w-fit max-w-full">
+            {/* Facture à bordures droites (sans coins ronds) */}
             <div
               ref={factureRef}
               className="pdf-preview-page"
               style={{
                 width: 794,
-                background: "#ffffff",
-                color: INK,
+                backgroundColor: "#ffffff",
+                color: "#0f172a",
                 fontFamily:
-                  'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
-                padding: 40,
+                  'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                padding: "36px 40px",
                 boxSizing: "border-box",
+                lineHeight: 1.4,
+                borderRadius: 0,
               }}
             >
-            {/* Bandeau */}
-            <div
-              style={{
-                height: 6,
-                background: BLUE,
-                borderRadius: 999,
-                marginBottom: 28,
-              }}
-            />
-
-            {/* En-tête */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 24,
-                marginBottom: 32,
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    marginBottom: 16,
-                  }}
-                >
-                  {logoSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={logoSrc}
-                      alt="Logo"
+              {/* En-tête : Logo & FactuPro à gauche, Numéro & Dates à droite */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  fontSize: 14,
+                  marginBottom: 28,
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      marginBottom: 8,
+                    }}
+                  >
+                    {logoSrc ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={logoSrc}
+                        alt="Logo"
+                        style={{
+                          height: 48,
+                          width: 48,
+                          borderRadius: 0,
+                          objectFit: "contain",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          borderRadius: 0,
+                          backgroundColor: "#0284c7",
+                          padding: 8,
+                          color: "#ffffff",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <LayersPlus style={{ width: 24, height: 24, color: "#ffffff" }} />
+                      </div>
+                    )}
+                    <span
                       style={{
-                        height: 48,
-                        width: 48,
-                        objectFit: "contain",
-                        borderRadius: 8,
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        height: 44,
-                        width: 44,
-                        borderRadius: 10,
-                        background: BLUE,
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        marginLeft: 12,
+                        fontSize: 26,
+                        fontWeight: 800,
+                        fontStyle: "italic",
+                        color: "#0f172a",
+                        lineHeight: 1,
                       }}
                     >
-                      <LayersPlus size={22} color="#fff" />
-                    </div>
+                      Factu<span style={{ color: "#0284c7" }}>Pro</span>
+                    </span>
+                  </div>
+
+                  <h1
+                    style={{
+                      fontSize: 40,
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      letterSpacing: "-0.02em",
+                      lineHeight: 1.1,
+                      margin: "6px 0 0 0",
+                      color: "#0f172a",
+                    }}
+                  >
+                    FACTURE
+                  </h1>
+                  {invoice.name && (
+                    <p
+                      style={{
+                        margin: "4px 0 0 0",
+                        fontSize: 14,
+                        color: "#64748b",
+                        fontWeight: 500,
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {invoice.name}
+                    </p>
                   )}
-                  <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em" }}>
-                    Factu<span style={{ color: BLUE }}>Pro</span>
-                  </div>
                 </div>
-                <div
-                  style={{
-                    fontSize: 36,
-                    fontWeight: 800,
-                    letterSpacing: "-0.03em",
-                    lineHeight: 1,
-                  }}
-                >
-                  FACTURE
-                </div>
-                <div style={{ marginTop: 8, color: MUTED, fontSize: 13 }}>
-                  {invoice.name}
-                </div>
-              </div>
 
-              <div
-                style={{
-                  minWidth: 220,
-                  background: SOFT,
-                  border: `1px solid ${LINE}`,
-                  borderRadius: 12,
-                  padding: "16px 18px",
-                }}
-              >
                 <div
                   style={{
-                    fontSize: 14,
-                    fontWeight: 800,
-                    color: BLUE,
-                    marginBottom: 10,
-                  }}
-                >
-                  {invoice.number}
-                </div>
-                <div style={{ fontSize: 12, color: MUTED, marginBottom: 6 }}>
-                  <span style={{ fontWeight: 700, color: INK }}>Date </span>
-                  {formatDisplayDate(invoice.invoiceDate)}
-                </div>
-                <div style={{ fontSize: 12, color: MUTED }}>
-                  <span style={{ fontWeight: 700, color: INK }}>Échéance </span>
-                  {formatDisplayDate(invoice.dueDate)}
-                </div>
-              </div>
-            </div>
-
-            {/* Émetteur / Client */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 20,
-                marginBottom: 28,
-              }}
-            >
-              <div
-                style={{
-                  border: `1px solid ${LINE}`,
-                  borderRadius: 12,
-                  padding: 16,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 800,
-                    color: BLUE,
+                    textAlign: "right",
                     textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    marginBottom: 10,
+                    minWidth: 200,
                   }}
                 >
-                  Émetteur
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
-                  {invoice.issuerName || "—"}
-                </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: MUTED,
-                    whiteSpace: "pre-wrap",
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {invoice.issuerAddress || "—"}
-                </div>
-                {company?.taxId && (
-                  <div style={{ fontSize: 12, color: MUTED, marginTop: 8 }}>
-                    IFU / NIF : {company.taxId}
-                  </div>
-                )}
-                {company?.iban && (
-                  <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
-                    IBAN : {company.iban}
-                  </div>
-                )}
-              </div>
-
-              <div
-                style={{
-                  border: `1px solid ${LINE}`,
-                  borderRadius: 12,
-                  padding: 16,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 800,
-                    color: BLUE,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    marginBottom: 10,
-                  }}
-                >
-                  Client
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
-                  {invoice.clientName || "—"}
-                </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: MUTED,
-                    whiteSpace: "pre-wrap",
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {invoice.clientAddress || "—"}
-                </div>
-                {invoice.clientEmail && (
-                  <div style={{ fontSize: 12, color: MUTED, marginTop: 8 }}>
-                    {invoice.clientEmail}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Tableau */}
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                tableLayout: "fixed",
-                marginBottom: 24,
-              }}
-            >
-              <colgroup>
-                <col style={{ width: "8%" }} />
-                <col style={{ width: "42%" }} />
-                <col style={{ width: "14%" }} />
-                <col style={{ width: "18%" }} />
-                <col style={{ width: "18%" }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th style={{ ...th, textAlign: "left" }}>#</th>
-                  <th style={{ ...th, textAlign: "left" }}>Description</th>
-                  <th style={{ ...th, textAlign: "right" }}>Qté</th>
-                  <th style={{ ...th, textAlign: "right" }}>Prix unit.</th>
-                  <th style={{ ...th, textAlign: "right" }}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoice.lines.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      style={{ ...cell, textAlign: "center", color: MUTED }}
+                  <div style={{ marginBottom: 8 }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        backgroundColor: "#f1f5f9",
+                        color: "#334155",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: "5px 12px",
+                        borderRadius: 0,
+                        lineHeight: 1.2,
+                        border: "1px solid #e2e8f0",
+                      }}
                     >
-                      Aucune ligne
-                    </td>
-                  </tr>
-                ) : (
-                  invoice.lines.map((ligne, index) => (
-                    <tr key={ligne.id}>
-                      <td style={{ ...cell, textAlign: "left", color: MUTED }}>
-                        {index + 1}
-                      </td>
-                      <td style={{ ...cell, textAlign: "left", fontWeight: 500 }}>
-                        {ligne.description || "—"}
-                      </td>
-                      <td style={{ ...cell, textAlign: "right" }}>
-                        {ligne.quantity}
-                      </td>
-                      <td style={{ ...cell, textAlign: "right" }}>
-                        {formatMoney(ligne.unitPrice, invoice.currency)}
-                      </td>
-                      <td style={{ ...cell, textAlign: "right", fontWeight: 700 }}>
-                        {formatMoney(
-                          ligne.quantity * ligne.unitPrice,
-                          invoice.currency,
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                      {invoice.number || "—"}
+                    </span>
+                  </div>
+                  <p
+                    style={{
+                      margin: "4px 0",
+                      fontSize: 13,
+                      color: "#475569",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <strong style={{ color: "#0f172a" }}>Date </strong>
+                    {formatDisplayDate(invoice.invoiceDate)}
+                  </p>
+                  <p
+                    style={{
+                      margin: "4px 0",
+                      fontSize: 13,
+                      color: "#475569",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <strong style={{ color: "#0f172a" }}>Échéance </strong>
+                    {formatDisplayDate(invoice.dueDate)}
+                  </p>
+                </div>
+              </div>
 
-            {/* Totaux */}
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <div style={{ width: 280 }}>
+              {/* Émetteur & Client */}
+              <div
+                style={{
+                  margin: "24px 0",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 24,
+                }}
+              >
+                {/* Émetteur */}
+                <div style={{ flex: 1, maxWidth: 320 }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      backgroundColor: "#f1f5f9",
+                      color: "#334155",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: "4px 10px",
+                      borderRadius: 0,
+                      marginBottom: 8,
+                      textTransform: "uppercase",
+                      lineHeight: 1.2,
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    Émetteur
+                  </span>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      fontStyle: "italic",
+                      color: "#0f172a",
+                      margin: "0 0 4px 0",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {invoice.issuerName || "—"}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "#64748b",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: 1.45,
+                      margin: 0,
+                    }}
+                  >
+                    {invoice.issuerAddress || "—"}
+                  </p>
+                  {company?.taxId && (
+                    <p
+                      style={{
+                        margin: "6px 0 0 0",
+                        fontSize: 12,
+                        color: "#64748b",
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      IFU/NIF : {company.taxId}
+                    </p>
+                  )}
+                  {company?.iban && (
+                    <p
+                      style={{
+                        margin: "2px 0 0 0",
+                        fontSize: 12,
+                        color: "#64748b",
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      IBAN : {company.iban}
+                    </p>
+                  )}
+                </div>
+
+                {/* Client */}
+                <div style={{ flex: 1, maxWidth: 320, textAlign: "right" }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      backgroundColor: "#f1f5f9",
+                      color: "#334155",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: "4px 10px",
+                      borderRadius: 0,
+                      marginBottom: 8,
+                      textTransform: "uppercase",
+                      lineHeight: 1.2,
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    Client
+                  </span>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      fontStyle: "italic",
+                      color: "#0f172a",
+                      margin: "0 0 4px 0",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {invoice.clientName || "—"}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "#64748b",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: 1.45,
+                      margin: 0,
+                      marginLeft: "auto",
+                    }}
+                  >
+                    {invoice.clientAddress || "—"}
+                  </p>
+                  {invoice.clientEmail && (
+                    <p
+                      style={{
+                        margin: "6px 0 0 0",
+                        fontSize: 12,
+                        color: "#64748b",
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {invoice.clientEmail}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Tableau avec bordures droites */}
+              <div style={{ width: "100%", margin: "24px 0" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 13,
+                    textAlign: "left",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  <thead>
+                    <tr
+                      style={{
+                        borderBottom: "2px solid #cbd5e1",
+                        color: "#475569",
+                        backgroundColor: "#f8fafc",
+                        fontSize: 12,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <th style={{ padding: "10px 12px", width: "30px" }}></th>
+                      <th style={{ padding: "10px 12px" }}>Description</th>
+                      <th style={{ padding: "10px 12px", textAlign: "right", width: "90px" }}>
+                        Quantité
+                      </th>
+                      <th style={{ padding: "10px 12px", textAlign: "right", width: "130px" }}>
+                        Prix unitaire
+                      </th>
+                      <th style={{ padding: "10px 12px", textAlign: "right", width: "130px" }}>
+                        Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoice.lines.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          style={{
+                            padding: "24px",
+                            textAlign: "center",
+                            color: "#94a3b8",
+                          }}
+                        >
+                          Aucune ligne
+                        </td>
+                      </tr>
+                    ) : (
+                      invoice.lines.map((ligne, index) => (
+                        <tr
+                          key={ligne.id}
+                          style={{
+                            backgroundColor: index % 2 === 1 ? "#f8fafc" : "#ffffff",
+                            borderBottom: "1px solid #e2e8f0",
+                          }}
+                        >
+                          <td style={{ padding: "10px 12px", color: "#94a3b8" }}>
+                            {index + 1}
+                          </td>
+                          <td
+                            style={{
+                              padding: "10px 12px",
+                              fontWeight: 500,
+                              color: "#0f172a",
+                            }}
+                          >
+                            {ligne.description || "—"}
+                          </td>
+                          <td
+                            style={{
+                              padding: "10px 12px",
+                              textAlign: "right",
+                              color: "#334155",
+                            }}
+                          >
+                            {ligne.quantity}
+                          </td>
+                          <td
+                            style={{
+                              padding: "10px 12px",
+                              textAlign: "right",
+                              color: "#334155",
+                            }}
+                          >
+                            {formatMoney(ligne.unitPrice, invoice.currency)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "10px 12px",
+                              textAlign: "right",
+                              fontWeight: 700,
+                              color: "#0f172a",
+                            }}
+                          >
+                            {formatMoney(
+                              ligne.quantity * ligne.unitPrice,
+                              invoice.currency,
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Totaux */}
+              <div
+                style={{
+                  marginTop: 20,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  fontSize: 14,
+                }}
+              >
                 <div
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
-                    padding: "8px 0",
-                    fontSize: 13,
-                    color: MUTED,
-                    borderBottom: `1px solid ${LINE}`,
+                    color: "#334155",
+                    lineHeight: 1.4,
                   }}
                 >
-                  <span>Total HT</span>
-                  <span style={{ color: INK, fontWeight: 600 }}>
-                    {formatMoney(totals.totalHT, invoice.currency)}
-                  </span>
+                  <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                    Total Hors Taxes
+                  </div>
+                  <div>{formatMoney(totals.totalHT, invoice.currency)}</div>
                 </div>
+
                 {invoice.vatActive && (
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      padding: "8px 0",
-                      fontSize: 13,
-                      color: MUTED,
-                      borderBottom: `1px solid ${LINE}`,
+                      color: "#334155",
+                      lineHeight: 1.4,
                     }}
                   >
-                    <span>TVA ({invoice.vatRate} %)</span>
-                    <span style={{ color: INK, fontWeight: 600 }}>
-                      {formatMoney(totals.totalVAT, invoice.currency)}
-                    </span>
+                    <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                      TVA {invoice.vatRate} %
+                    </div>
+                    <div>{formatMoney(totals.totalVAT, invoice.currency)}</div>
                   </div>
                 )}
+
                 <div
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    marginTop: 10,
-                    padding: "12px 14px",
-                    background: BLUE,
-                    color: "#fff",
-                    borderRadius: 10,
-                    fontSize: 14,
-                    fontWeight: 800,
+                    color: "#0f172a",
+                    paddingTop: 8,
+                    borderTop: "2px solid #0f172a",
                   }}
                 >
-                  <span>Total TTC</span>
-                  <span>{formatMoney(totals.totalTTC, invoice.currency)}</span>
+                  <div style={{ fontWeight: 800, fontSize: 16 }}>Total TTC</div>
+                  <div
+                    style={{
+                      backgroundColor: "#0284c7",
+                      color: "#ffffff",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      padding: "8px 16px",
+                      borderRadius: 0,
+                      display: "inline-block",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {formatMoney(totals.totalTTC, invoice.currency)}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Notes & conditions */}
-            {(invoice.notes || company?.paymentTerms) && (
-              <div
-                style={{
-                  marginTop: 28,
-                  display: "grid",
-                  gridTemplateColumns: invoice.notes && company?.paymentTerms ? "1fr 1fr" : "1fr",
-                  gap: 16,
-                }}
-              >
-                {company?.paymentTerms && (
-                  <div
-                    style={{
-                      border: `1px solid ${LINE}`,
-                      borderRadius: 12,
-                      padding: 14,
-                      background: SOFT,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 800,
-                        color: BLUE,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Conditions de paiement
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: MUTED,
-                        whiteSpace: "pre-wrap",
-                        lineHeight: 1.5,
-                      }}
-                    >
+              {/* Conditions de paiement & notes */}
+              {(company?.paymentTerms || invoice.notes) && (
+                <div
+                  style={{
+                    marginTop: 28,
+                    paddingTop: 14,
+                    borderTop: "1px solid #e2e8f0",
+                    fontSize: 11,
+                    color: "#64748b",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {company?.paymentTerms && (
+                    <div style={{ marginBottom: 4 }}>
+                      <strong style={{ color: "#334155" }}>
+                        Conditions de paiement :{" "}
+                      </strong>
                       {company.paymentTerms}
                     </div>
-                  </div>
-                )}
-                {invoice.notes && (
-                  <div
-                    style={{
-                      border: `1px solid ${LINE}`,
-                      borderRadius: 12,
-                      padding: 14,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 800,
-                        color: BLUE,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Notes
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: MUTED,
-                        whiteSpace: "pre-wrap",
-                        lineHeight: 1.5,
-                      }}
-                    >
+                  )}
+                  {invoice.notes && (
+                    <div>
+                      <strong style={{ color: "#334155" }}>Notes : </strong>
                       {invoice.notes}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Pied */}
-            <div
-              style={{
-                marginTop: 36,
-                paddingTop: 16,
-                borderTop: `1px solid ${LINE}`,
-                fontSize: 11,
-                color: MUTED,
-                lineHeight: 1.5,
-              }}
-            >
-              Document généré avec FactuPro
-              {company?.name ? ` — ${company.name}` : ""}.
-              {company?.phone ? ` Tél. ${company.phone}.` : ""}
-              {company?.email ? ` ${company.email}` : ""}
+                  )}
+                </div>
+              )}
             </div>
-          </div>
           </div>
         </div>
       </div>

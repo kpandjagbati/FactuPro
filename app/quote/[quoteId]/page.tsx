@@ -1,6 +1,7 @@
 "use client";
 
 import { getClients } from "@/app/actions";
+import { ensureQuotePublicToken } from "@/app/actions-portal";
 import {
   convertQuoteToInvoice,
   deleteQuote,
@@ -16,7 +17,16 @@ import { handleEmailResult } from "@/lib/email-client";
 import { formatMoney, toDateInputValue } from "@/lib/format";
 import type { Client, Quote, QuoteStatus, Totals } from "@/type";
 import { QUOTE_STATUS_LABELS, QUOTE_STATUSES } from "@/type";
-import { Copy, FileInput, Mail, Save, Trash } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  Eye,
+  FileCheck,
+  FileInput,
+  Mail,
+  Save,
+  Trash,
+} from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -32,6 +42,7 @@ export default function QuoteDetailPage() {
   const [emailing, setEmailing] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -147,6 +158,25 @@ export default function QuoteDetailPage() {
     }
   };
 
+  const handleCopyPublicLink = async () => {
+    if (!quote) return;
+    try {
+      let activeToken = quote.publicToken;
+      if (!activeToken) {
+        activeToken = await ensureQuotePublicToken(quote.id);
+        setQuote({ ...quote, publicToken: activeToken });
+      }
+
+      const url = `${window.location.origin}/view/quote/${activeToken}`;
+      await navigator.clipboard.writeText(url);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch (err) {
+      console.error(err);
+      alert("Impossible de générer le lien de partage.");
+    }
+  };
+
   if (notFound) {
     return (
       <Wrapper>
@@ -185,6 +215,26 @@ export default function QuoteDetailPage() {
               </option>
             ))}
           </select>
+
+          <button
+            type="button"
+            onClick={handleCopyPublicLink}
+            className="btn btn-sm btn-outline gap-1"
+            title="Lien public pour le client et signature"
+          >
+            {copiedLink ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                <span className="text-success">Lien copié !</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" />
+                <span>Lien client</span>
+              </>
+            )}
+          </button>
+
           <button
             className="btn btn-sm btn-info"
             disabled={!dirty || saving || quote.status === "CONVERTED"}
@@ -198,6 +248,7 @@ export default function QuoteDetailPage() {
               </>
             )}
           </button>
+
           <button
             className="btn btn-sm btn-secondary"
             disabled={emailing || quote.status === "CONVERTED"}
@@ -211,6 +262,7 @@ export default function QuoteDetailPage() {
               </>
             )}
           </button>
+
           {quote.status !== "CONVERTED" && (
             <button
               className="btn btn-sm btn-success"
@@ -226,6 +278,7 @@ export default function QuoteDetailPage() {
               )}
             </button>
           )}
+
           <button
             className="btn btn-sm btn-ghost"
             disabled={duplicating}
@@ -239,10 +292,41 @@ export default function QuoteDetailPage() {
               </>
             )}
           </button>
+
           <button className="btn btn-sm btn-error" onClick={handleDelete}>
             <Trash className="w-4" />
           </button>
         </div>
+      </div>
+
+      {/* Bannière de consultation / signature */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        {quote.viewedAt && (
+          <div className="flex items-center gap-1.5 text-xs text-info bg-info/10 rounded-lg px-3 py-1.5">
+            <Eye className="h-3.5 w-3.5" />
+            Consulté en ligne par le client le{" "}
+            {new Date(quote.viewedAt).toLocaleDateString("fr-FR", {
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
+        )}
+
+        {quote.signedAt && (
+          <div className="flex items-center gap-1.5 text-xs text-success bg-success/10 rounded-lg px-3 py-1.5 font-medium">
+            <FileCheck className="h-4 w-4" />
+            Signé électroniquement par <strong>{quote.signedByName || "Client"}</strong> le{" "}
+            {new Date(quote.signedAt).toLocaleDateString("fr-FR", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-4 md:flex-row">

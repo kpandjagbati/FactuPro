@@ -13,6 +13,8 @@ const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/invoices", label: "Factures" },
   { href: "/quotes", label: "Devis" },
+  { href: "/products", label: "Articles" },
+  { href: "/expenses", label: "Dépenses" },
   { href: "/clients", label: "Clients" },
   { href: "/entreprise", label: "Entreprise" },
 ];
@@ -50,7 +52,7 @@ const Navbar = () => {
         </Link>
 
         <div className="flex items-center space-x-2 md:space-x-4">
-          <div className="hidden items-center space-x-2 sm:flex">
+          <div className="hidden items-center space-x-2 lg:flex">
             {navLinks.map(({ href, label }) => (
               <Link
                 key={href}
@@ -66,12 +68,12 @@ const Navbar = () => {
         </div>
       </div>
 
-      <div className="mt-3 flex gap-2 overflow-x-auto sm:hidden">
+      <div className="mt-3 flex gap-2 overflow-x-auto lg:hidden pb-1">
         {navLinks.map(({ href, label }) => (
           <Link
             key={href}
             href={href}
-            className={`btn btn-sm ${isActiveLink(href) ? "btn-info" : "btn-ghost"}`}
+            className={`btn btn-sm shrink-0 ${isActiveLink(href) ? "btn-info" : "btn-ghost"}`}
           >
             {label}
           </Link>

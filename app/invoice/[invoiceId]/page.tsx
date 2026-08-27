@@ -2,6 +2,7 @@
 
 import InvoiceInfo from "@/app/components/InvoiceInfo";
 import InvoiceLines from "@/app/components/InvoiceLines";
+import PaymentTracker from "@/app/components/PaymentTracker";
 import VATControl from "@/app/components/VATControl";
 import Wrapper from "@/app/components/Wrapper";
 import { formatMoney } from "@/lib/format";
@@ -314,8 +315,8 @@ export default function InvoiceDetailPage() {
         </div>
 
         <div className="flex w-full flex-col md:flex-row">
-          <div className="flex w-full flex-col md:w-1/3">
-            <div className="mb-4 rounded-xl bg-base-200 p-5">
+          <div className="flex w-full flex-col space-y-4 md:w-1/3">
+            <div className="rounded-xl bg-base-200 p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div className="badge badge-info">Résumé des totaux</div>
                 <VATControl document={invoice} setDocument={setInvoice} />
@@ -336,6 +337,15 @@ export default function InvoiceDetailPage() {
                 <span>{formatMoney(totals.totalTTC, invoice.currency)}</span>
               </div>
             </div>
+
+            <PaymentTracker
+              invoiceId={invoice.id}
+              currency={invoice.currency}
+              totalTTC={totals.totalTTC}
+              publicToken={invoice.publicToken}
+              viewedAt={invoice.viewedAt}
+              onPaymentUpdated={fetchInvoice}
+            />
 
             <InvoiceInfo
               invoice={invoice}

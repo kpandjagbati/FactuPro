@@ -1,9 +1,12 @@
 import type {
   Client,
   CompanyProfile,
+  Expense,
   Invoice as PrismaInvoice,
   InvoiceLine,
   InvoiceStatus,
+  Payment,
+  Product,
   Quote as PrismaQuote,
   QuoteLine,
   QuoteStatus,
@@ -12,6 +15,7 @@ import type {
 export type Invoice = PrismaInvoice & {
   lines: InvoiceLine[];
   client?: Client | null;
+  payments?: Payment[];
 };
 
 export type Quote = PrismaQuote & {
@@ -23,6 +27,8 @@ export type Totals = {
   totalHT: number;
   totalVAT: number;
   totalTTC: number;
+  totalPaid?: number;
+  remainingDue?: number;
 };
 
 export type CompanyProfileInput = {
@@ -44,6 +50,31 @@ export type ClientInput = {
   taxId?: string | null;
 };
 
+export type ProductInput = {
+  name: string;
+  description?: string | null;
+  unitPrice: number;
+  unit?: string;
+  category?: string | null;
+};
+
+export type ExpenseInput = {
+  title: string;
+  amount: number;
+  category: string;
+  expenseDate: string | Date;
+  receiptUrl?: string | null;
+  notes?: string | null;
+};
+
+export type PaymentInput = {
+  amount: number;
+  paymentDate?: string | Date;
+  paymentMethod: string;
+  reference?: string | null;
+  notes?: string | null;
+};
+
 export type DashboardStats = {
   invoiceCount: number;
   quoteCount: number;
@@ -53,15 +84,29 @@ export type DashboardStats = {
   pendingCount: number;
   pendingTotal: number;
   draftCount: number;
+  totalExpenses: number;
+  netMargin: number;
   currency: string;
   topClients: { name: string; total: number }[];
   recentInvoices: Invoice[];
+  recentExpenses: Expense[];
   monthlyRevenue: { label: string; total: number }[];
+  monthlyExpenses: { label: string; total: number }[];
   monthlyInvoices: { label: string; count: number }[];
   statusBreakdown: { status: InvoiceStatus; label: string; count: number }[];
 };
 
-export type { Client, CompanyProfile, InvoiceLine, InvoiceStatus, QuoteLine, QuoteStatus };
+export type {
+  Client,
+  CompanyProfile,
+  Expense,
+  InvoiceLine,
+  InvoiceStatus,
+  Payment,
+  Product,
+  QuoteLine,
+  QuoteStatus,
+};
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   DRAFT: "Brouillon",
@@ -94,3 +139,23 @@ export const QUOTE_STATUSES: QuoteStatus[] = [
   "REJECTED",
   "CONVERTED",
 ];
+
+export const EXPENSE_CATEGORIES = [
+  "Matériel & Équipement",
+  "Logiciels & Hébergement",
+  "Sous-traitance & Salaires",
+  "Déplacements & Transport",
+  "Marketing & Publicité",
+  "Fournitures de bureau",
+  "Impôts & Taxes",
+  "Autre dépense",
+] as const;
+
+export const PAYMENT_METHODS = [
+  "Virement bancaire",
+  "Mobile Money (Wave / MoMo / Orange)",
+  "Espèces",
+  "Chèque",
+  "Carte bancaire",
+  "Autre",
+] as const;
