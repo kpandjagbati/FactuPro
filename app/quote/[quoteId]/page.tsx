@@ -12,6 +12,7 @@ import {
 } from "@/app/actions-v2";
 import DocumentLinesEditor from "@/app/components/DocumentLinesEditor";
 import VATControl from "@/app/components/VATControl";
+import WhatsAppButton from "@/app/components/WhatsAppButton";
 import Wrapper from "@/app/components/Wrapper";
 import { handleEmailResult } from "@/lib/email-client";
 import { formatMoney, toDateInputValue } from "@/lib/format";
@@ -262,6 +263,22 @@ export default function QuoteDetailPage() {
               </>
             )}
           </button>
+
+          <WhatsAppButton
+            type="quote"
+            docNumber={quote.number}
+            clientName={quote.clientName}
+            clientPhone={
+              clients.find((c) => c.id === quote.clientId)?.phone || null
+            }
+            totalFormatted={totals ? formatMoney(totals.totalTTC, quote.currency) : ""}
+            issuerName={quote.issuerName}
+            portalUrl={
+              typeof window !== "undefined" && quote.publicToken
+                ? `${window.location.origin}/view/quote/${quote.publicToken}`
+                : ""
+            }
+          />
 
           {quote.status !== "CONVERTED" && (
             <button

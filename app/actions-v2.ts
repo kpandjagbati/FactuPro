@@ -37,18 +37,36 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const orgId = user.organizationId;
   const currency = user.organization.currency || "XOF";
 
-  const [invoices, quotes, expenses] = await Promise.all([
-    prisma.invoice.findMany({
-      where: { organizationId: orgId },
-      include: { lines: true, client: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.quote.count({ where: { organizationId: orgId } }),
-    prisma.expense.findMany({
-      where: { organizationId: orgId },
-      orderBy: { expenseDate: "desc" },
-    }),
-  ]);
+  const [invoices, quotes, expenses, recurringCount, creditNotes, lowStockProducts] =
+    await Promise.all([
+      prisma.invoice.findMany({
+        where: { organizationId: orgId },
+        include: { lines: true, client: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.quote.count({ where: { organizationId: orgId } }),
+      prisma.expense.findMany({
+        where: { organizationId: orgId },
+        orderBy: { expenseDate: "desc" },
+      }),
+      prisma.recurringInvoice.count({
+        where: { organizationId: orgId, active: true },
+      }),
+      prisma.creditNote.findMany({
+        where: { organizationId: orgId },
+        include: { lines: true },
+      }),
+      prisma.product.findMany({
+        where: {
+          organizationId: orgId,
+          trackStock: true,
+        },
+      }),
+    ]);
+
+  const lowStockCount = lowStockProducts.filter(
+    (p) => p.stockQuantity <= p.minStockAlert,
+  ).length;
 
   let paidTotal = 0;
   let overdueTotal = 0;
@@ -110,7 +128,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }
   }
 
-  const netMargin = paidTotal - totalExpenses;
+  let creditNotesTotal = 0;
+  for (const cn of creditNotes) {
+    const { ttc } = calcTotal(cn.lines, cn.vatActive, cn.vatRate);
+    creditNotesTotal += ttc;
+  }
+
+  const netMargin = paidTotal - totalExpenses - creditNotesTotal;
 
   const monthLabel = (key: string) => {
     const [y, m] = key.split("-").map(Number);
@@ -142,6 +166,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     pendingTotal,
     draftCount,
     totalExpenses,
+    creditNotesTotal,
+    recurringCount,
+    lowStockCount,
     netMargin,
     currency,
     topClients,

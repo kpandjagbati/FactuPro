@@ -44,6 +44,9 @@ export async function createProduct(data: ProductInput): Promise<Product> {
       unitPrice: Number(data.unitPrice) || 0,
       unit: data.unit?.trim() || "unité",
       category: data.category?.trim() || null,
+      trackStock: Boolean(data.trackStock),
+      stockQuantity: Number(data.stockQuantity) || 0,
+      minStockAlert: Number(data.minStockAlert) || 5,
     },
   });
 }
@@ -61,6 +64,24 @@ export async function updateProduct(
       unitPrice: Number(data.unitPrice) || 0,
       unit: data.unit?.trim() || "unité",
       category: data.category?.trim() || null,
+      trackStock: Boolean(data.trackStock),
+      stockQuantity: Number(data.stockQuantity) || 0,
+      minStockAlert: Number(data.minStockAlert) || 5,
+    },
+  });
+}
+
+export async function adjustProductStock(
+  id: string,
+  delta: number,
+): Promise<Product> {
+  const user = await requireDbUser();
+  return prisma.product.update({
+    where: { id, organizationId: user.organizationId },
+    data: {
+      stockQuantity: {
+        increment: delta,
+      },
     },
   });
 }

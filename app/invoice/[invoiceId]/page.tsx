@@ -8,8 +8,9 @@ import Wrapper from "@/app/components/Wrapper";
 import { formatMoney } from "@/lib/format";
 import type { Client, CompanyProfile, Invoice, InvoiceStatus, Totals } from "@/type";
 import { INVOICE_STATUS_LABELS, INVOICE_STATUSES } from "@/type";
-import { BellRing, Copy, Mail, Save, Trash } from "lucide-react";
+import { BellRing, Copy, FileMinus, Mail, Save, Trash, Truck } from "lucide-react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -20,7 +21,9 @@ import {
   getInvoiceById,
   updateInvoice,
 } from "@/app/actions";
+import { createCreditNoteFromInvoice } from "@/app/actions-credit-notes";
 import { emailInvoice, sendPaymentReminder } from "@/app/actions-v2";
+import WhatsAppButton from "@/app/components/WhatsAppButton";
 import { handleEmailResult } from "@/lib/email-client";
 
 const InvoicePDF = dynamic(() => import("@/app/components/InvoicePDF"), {
@@ -45,6 +48,7 @@ export default function InvoiceDetailPage() {
   const [emailing, setEmailing] = useState(false);
   const [reminding, setReminding] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [crediting, setCrediting] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   const fetchInvoice = async () => {
@@ -192,6 +196,26 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleCreateCreditNote = async () => {
+    if (!invoice) return;
+    const reason = window.prompt(
+      "Motif de l'avoir / rectification :",
+      "Annulation ou remise sur facture",
+    );
+    if (!reason) return;
+
+    setCrediting(true);
+    try {
+      const creditNote = await createCreditNoteFromInvoice(invoice.id, reason);
+      router.push(`/credit-note/${creditNote.id}`);
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de la création de l'avoir.");
+    } finally {
+      setCrediting(false);
+    }
+  };
+
   const handleSelectClient = (clientId: string) => {
     if (!invoice) return;
     const client = clients.find((c) => c.id === clientId);
@@ -276,6 +300,36 @@ export default function InvoiceDetailPage() {
               )}
             </button>
 
+            <WhatsAppButton
+              type={
+                invoice.status === "SENT" || invoice.status === "OVERDUE"
+                  ? "reminder"
+                  : "invoice"
+              }
+              docNumber={invoice.number}
+              clientName={invoice.clientName}
+              clientPhone={
+                clients.find((c) => c.id === invoice.clientId)?.phone || null
+              }
+              totalFormatted={formatMoney(totals.totalTTC, invoice.currency)}
+              issuerName={invoice.issuerName || company?.name}
+              portalUrl={
+                typeof window !== "undefined" && invoice.publicToken
+                  ? `${window.location.origin}/view/invoice/${invoice.publicToken}`
+                  : ""
+              }
+              dueDateFormatted={
+                invoice.dueDate
+                  ? new Date(invoice.dueDate).toLocaleDateString("fr-FR")
+                  : undefined
+              }
+              remainingFormatted={
+                totals.remainingDue !== undefined
+                  ? formatMoney(totals.remainingDue, invoice.currency)
+                  : undefined
+              }
+            />
+
             {(invoice.status === "SENT" || invoice.status === "OVERDUE") && (
               <button
                 className="btn btn-sm btn-warning"
@@ -293,6 +347,14 @@ export default function InvoiceDetailPage() {
               </button>
             )}
 
+            <Link
+              href={`/delivery/${invoice.id}`}
+              className="btn btn-sm btn-outline gap-1"
+              title="Générer ou imprimer le Bon de Livraison"
+            >
+              BL <Truck className="h-4 w-4" />
+            </Link>
+
             <button
               className="btn btn-sm btn-ghost"
               disabled={duplicating}
@@ -304,6 +366,22 @@ export default function InvoiceDetailPage() {
                 <>
                   Dupliquer
                   <Copy className="ml-2 w-4" />
+                </>
+              )}
+            </button>
+
+            <button
+              className="btn btn-sm btn-ghost text-error"
+              disabled={crediting}
+              onClick={handleCreateCreditNote}
+              title="Créer un avoir pour cette facture"
+            >
+              {crediting ? (
+                <span className="loading loading-spinner loading-sm" />
+              ) : (
+                <>
+                  Avoir
+                  <FileMinus className="ml-2 w-4" />
                 </>
               )}
             </button>

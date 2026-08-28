@@ -23,6 +23,13 @@ enum QuoteStatus {
   CONVERTED
 }
 
+enum RecurringFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
 model User {
   id             String       @id @default(cuid())
   clerkId        String       @unique
@@ -35,20 +42,23 @@ model User {
 }
 
 model Organization {
-  id             String          @id @default(cuid())
-  name           String
-  invoiceCounter Int             @default(0)
-  quoteCounter   Int             @default(0)
-  currency       String          @default("XOF")
-  users          User[]
-  companyProfile CompanyProfile?
-  clients        Client[]
-  invoices       Invoice[]
-  quotes         Quote[]
-  products       Product[]
-  expenses       Expense[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                 String              @id @default(cuid())
+  name               String
+  invoiceCounter     Int                 @default(0)
+  quoteCounter       Int                 @default(0)
+  creditNoteCounter  Int                 @default(0)
+  currency           String              @default("XOF")
+  users              User[]
+  companyProfile     CompanyProfile?
+  clients            Client[]
+  invoices           Invoice[]
+  quotes             Quote[]
+  products           Product[]
+  expenses           Expense[]
+  recurringInvoices  RecurringInvoice[]
+  creditNotes        CreditNote[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 }
 
 model CompanyProfile {
@@ -68,18 +78,20 @@ model CompanyProfile {
 }
 
 model Client {
-  id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  name           String
-  email          String?
-  phone          String?
-  address        String       @default("")
-  taxId          String?
-  invoices       Invoice[]
-  quotes         Quote[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                 String              @id @default(cuid())
+  organizationId     String
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name               String
+  email              String?
+  phone              String?
+  address            String              @default("")
+  taxId              String?
+  invoices           Invoice[]
+  quotes             Quote[]
+  recurringInvoices  RecurringInvoice[]
+  creditNotes        CreditNote[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([organizationId])
 }
@@ -93,6 +105,9 @@ model Product {
   unitPrice      Float        @default(0)
   unit           String       @default("unité")
   category       String?
+  trackStock     Boolean      @default(false)
+  stockQuantity  Int          @default(0)
+  minStockAlert  Int          @default(5)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -117,33 +132,38 @@ model Expense {
 }
 
 model Invoice {
-  id             String         @id @default(cuid())
-  organizationId String
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  clientId       String?
-  client         Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  quoteId        String?        @unique
-  quote          Quote?         @relation(fields: [quoteId], references: [id], onDelete: SetNull)
-  number         String
-  name           String
-  issuerName     String         @default("")
-  issuerAddress  String         @default("")
-  clientName     String         @default("")
-  clientAddress  String         @default("")
-  clientEmail    String?
-  notes          String?
-  invoiceDate    DateTime?
-  dueDate        DateTime?
-  vatActive      Boolean        @default(false)
-  vatRate        Float          @default(18)
-  status         InvoiceStatus  @default(DRAFT)
-  currency       String         @default("XOF")
-  publicToken    String?        @unique
-  viewedAt       DateTime?
-  lines          InvoiceLine[]
-  payments       Payment[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id                  String             @id @default(cuid())
+  organizationId      String
+  organization        Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientId            String?
+  client              Client?            @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  quoteId             String?            @unique
+  quote               Quote?             @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  recurringInvoiceId  String?
+  recurringInvoice    RecurringInvoice?  @relation(fields: [recurringInvoiceId], references: [id], onDelete: SetNull)
+  number              String
+  name                String
+  issuerName          String             @default("")
+  issuerAddress       String             @default("")
+  clientName          String             @default("")
+  clientAddress       String             @default("")
+  clientEmail         String?
+  notes               String?
+  invoiceDate         DateTime?
+  dueDate             DateTime?
+  vatActive           Boolean            @default(false)
+  vatRate             Float              @default(18)
+  status              InvoiceStatus      @default(DRAFT)
+  currency            String             @default("XOF")
+  publicToken         String?            @unique
+  viewedAt            DateTime?
+  deliveryNumber      String?
+  deliveryDate        DateTime?
+  lines               InvoiceLine[]
+  payments            Payment[]
+  creditNotes         CreditNote[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   @@unique([organizationId, number])
   @@index([organizationId])
@@ -222,4 +242,84 @@ model QuoteLine {
   unitPrice   Float  @default(0)
 
   @@index([quoteId])
+}
+
+model RecurringInvoice {
+  id             String              @id @default(cuid())
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientId       String?
+  client         Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  title          String
+  frequency      RecurringFrequency  @default(MONTHLY)
+  nextRunDate    DateTime
+  endDate        DateTime?
+  active         Boolean             @default(true)
+  issuerName     String              @default("")
+  issuerAddress  String              @default("")
+  clientName     String              @default("")
+  clientAddress  String              @default("")
+  clientEmail    String?
+  notes          String?
+  vatActive      Boolean             @default(false)
+  vatRate        Float               @default(18)
+  currency       String              @default("XOF")
+  lines          RecurringInvoiceLine[]
+  generatedInvoices Invoice[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([organizationId])
+  @@index([active, nextRunDate])
+}
+
+model RecurringInvoiceLine {
+  id                 String           @id @default(cuid())
+  recurringInvoiceId String
+  recurringInvoice   RecurringInvoice @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)
+  description        String           @default("")
+  quantity           Int              @default(1)
+  unitPrice          Float            @default(0)
+
+  @@index([recurringInvoiceId])
+}
+
+model CreditNote {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceId      String?
+  invoice        Invoice?         @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  clientId       String?
+  client         Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  number         String
+  reason         String           @default("Avoir sur facture")
+  creditDate     DateTime         @default(now())
+  issuerName     String           @default("")
+  issuerAddress  String           @default("")
+  clientName     String           @default("")
+  clientAddress  String           @default("")
+  clientEmail    String?
+  notes          String?
+  vatActive      Boolean          @default(false)
+  vatRate        Float            @default(18)
+  currency       String           @default("XOF")
+  lines          CreditNoteLine[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+  @@index([invoiceId])
+}
+
+model CreditNoteLine {
+  id           String     @id @default(cuid())
+  creditNoteId String
+  creditNote   CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  description  String     @default("")
+  quantity     Int        @default(1)
+  unitPrice    Float      @default(0)
+
+  @@index([creditNoteId])
 }

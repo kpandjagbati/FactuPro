@@ -7,11 +7,13 @@ import {
   FileText,
   LayersPlus,
   ShieldCheck,
+  Smartphone,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PublicInvoiceView from "@/app/components/PublicInvoiceView";
+import { MixxByYasLogo, MoovMoneyLogo } from "@/app/components/PaymentMethodLogo";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -81,6 +83,41 @@ export default async function PublicInvoicePage({ params }: PageProps) {
           totals={{ totalHT, totalVAT, totalTTC, totalPaid, remainingDue }}
           company={company}
         />
+
+        {/* Moyens de règlement acceptés au Togo */}
+        {remainingDue > 0 && (
+          <div className="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-base-content">
+              <Smartphone className="h-4 w-4 text-info" />
+              Moyens de paiement acceptés au Togo
+            </div>
+            <p className="text-xs text-base-content/70">
+              Vous pouvez régler cette facture directement par Mobile Money ou virement bancaire :
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-base-200 bg-base-200/40">
+                <MixxByYasLogo size="lg" showText={true} />
+                {company?.phone && (
+                  <span className="badge badge-sm badge-ghost font-mono text-xs">{company.phone}</span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-base-200 bg-base-200/40">
+                <MoovMoneyLogo size="lg" showText={true} />
+                {company?.phone && (
+                  <span className="badge badge-sm badge-ghost font-mono text-xs">{company.phone}</span>
+                )}
+              </div>
+            </div>
+
+            {company?.iban && (
+              <div className="text-xs text-base-content/80 pt-1">
+                <span className="font-semibold">Virement bancaire (IBAN) :</span>{" "}
+                <code className="font-mono bg-base-200 px-1.5 py-0.5 rounded text-[11px]">{company.iban}</code>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Pied de page public */}
         <div className="text-center text-xs text-base-content/50 py-4 flex items-center justify-center gap-1.5">

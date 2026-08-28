@@ -7,6 +7,10 @@ import {
   getInvoicePayments,
 } from "@/app/actions-payments";
 import { ensureInvoicePublicToken } from "@/app/actions-portal";
+import PaymentMethodLogo, {
+  MixxByYasLogo,
+  MoovMoneyLogo,
+} from "@/app/components/PaymentMethodLogo";
 import { formatMoney } from "@/lib/format";
 import type { Payment, PaymentInput } from "@/type";
 import { PAYMENT_METHODS } from "@/type";
@@ -237,14 +241,17 @@ export default function PaymentTracker({
                 key={p.id}
                 className="flex items-center justify-between rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-xs"
               >
-                <div>
-                  <div className="font-semibold text-slate-900">
-                    {formatMoney(p.amount, currency)}
-                  </div>
-                  <div className="text-[11px] text-base-content/60">
-                    {new Date(p.paymentDate).toLocaleDateString("fr-FR")} •{" "}
-                    {p.paymentMethod}
-                    {p.reference ? ` (${p.reference})` : ""}
+                <div className="flex items-center gap-2.5">
+                  <PaymentMethodLogo method={p.paymentMethod} size="sm" />
+                  <div>
+                    <div className="font-semibold text-base-content">
+                      {formatMoney(p.amount, currency)}
+                    </div>
+                    <div className="text-[11px] text-base-content/60">
+                      {new Date(p.paymentDate).toLocaleDateString("fr-FR")} •{" "}
+                      {p.paymentMethod}
+                      {p.reference ? ` (${p.reference})` : ""}
+                    </div>
                   </div>
                 </div>
                 <button
@@ -260,6 +267,15 @@ export default function PaymentTracker({
           </div>
         </div>
       )}
+
+      {/* Raccourcis Togo Mobile Money */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-base-300/60 text-xs text-base-content/70">
+        <span className="text-[11px] font-medium">Mobile Money Togo :</span>
+        <div className="flex items-center gap-3">
+          <MixxByYasLogo size="sm" showText={true} />
+          <MoovMoneyLogo size="sm" showText={true} />
+        </div>
+      </div>
 
       {/* Modal Ajout Règlement */}
       {modalOpen && (
@@ -302,6 +318,49 @@ export default function PaymentTracker({
                   }
                   className="input input-bordered w-full"
                 />
+              </div>
+
+              {/* Sélection rapide Mobile Money Togo */}
+              <div className="space-y-1.5">
+                <label className="label py-0">
+                  <span className="label-text font-semibold text-xs">
+                    Paiement direct Mobile Money Togo :
+                  </span>
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        paymentMethod: "Mixx by Yas (Togocom)",
+                      })
+                    }
+                    className={`btn h-auto py-2.5 px-3 flex items-center justify-start border transition-all ${
+                      form.paymentMethod === "Mixx by Yas (Togocom)"
+                        ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                        : "border-base-300 bg-base-100 hover:bg-base-200"
+                    }`}
+                  >
+                    <MixxByYasLogo size="sm" showText={true} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        paymentMethod: "Moov Money (Moov Africa)",
+                      })
+                    }
+                    className={`btn h-auto py-2.5 px-3 flex items-center justify-start border transition-all ${
+                      form.paymentMethod === "Moov Money (Moov Africa)"
+                        ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                        : "border-base-300 bg-base-100 hover:bg-base-200"
+                    }`}
+                  >
+                    <MoovMoneyLogo size="sm" showText={true} />
+                  </button>
+                </div>
               </div>
 
               <div className="form-control">
