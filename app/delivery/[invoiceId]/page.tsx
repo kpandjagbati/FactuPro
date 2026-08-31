@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ArrowLeft, CheckCircle2, FileText, Truck } from "lucide-react";
+import { ArrowLeft, FileText, Truck } from "lucide-react";
 import Wrapper from "@/app/components/Wrapper";
 import { generateDeliveryNote, getDeliveryNoteData } from "@/app/actions-delivery";
-import type { Invoice } from "@/type";
+import type { CompanyProfile, Invoice } from "@/type";
+
+interface InvoiceWithOrg extends Invoice {
+  organization?: {
+    companyProfile?: CompanyProfile | null;
+  };
+}
 
 const DeliveryNotePDF = dynamic(
   () => import("@/app/components/DeliveryNotePDF"),
@@ -23,30 +29,28 @@ const DeliveryNotePDF = dynamic(
 
 export default function DeliveryNotePage() {
   const params = useParams<{ invoiceId: string }>();
-  const router = useRouter();
-  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [invoice, setInvoice] = useState<InvoiceWithOrg | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       // Generate or retrieve BL number
       await generateDeliveryNote(params.invoiceId);
       const data = await getDeliveryNoteData(params.invoiceId);
-      setInvoice(data as unknown as Invoice);
+      setInvoice(data as unknown as InvoiceWithOrg);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.invoiceId]);
 
   useEffect(() => {
     if (params.invoiceId) {
-      loadData();
+      void loadData();
     }
-  }, [params.invoiceId]);
+  }, [params.invoiceId, loadData]);
 
   if (loading || !invoice) {
     return (
@@ -58,7 +62,7 @@ export default function DeliveryNotePage() {
     );
   }
 
-  const company = (invoice as any).organization?.companyProfile || null;
+  const company = invoice.organization?.companyProfile || null;
 
   return (
     <Wrapper>

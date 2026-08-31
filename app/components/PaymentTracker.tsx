@@ -20,10 +20,17 @@ import {
   CreditCard,
   Eye,
   ExternalLink,
+  MessageCircle,
   Plus,
+  Receipt,
   Trash2,
   X,
 } from "lucide-react";
+import Link from "next/link";
+import {
+  buildReceiptWhatsAppMessage,
+  generateWhatsAppLink,
+} from "@/lib/whatsapp";
 
 interface Props {
   invoiceId: string;
@@ -31,6 +38,10 @@ interface Props {
   totalTTC: number;
   publicToken?: string | null;
   viewedAt?: Date | string | null;
+  invoiceNumber?: string;
+  clientName?: string;
+  clientPhone?: string | null;
+  issuerName?: string;
   onPaymentUpdated?: () => void;
 }
 
@@ -40,6 +51,10 @@ export default function PaymentTracker({
   totalTTC,
   publicToken: initialToken,
   viewedAt,
+  invoiceNumber,
+  clientName,
+  clientPhone,
+  issuerName,
   onPaymentUpdated,
 }: Props) {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -254,14 +269,48 @@ export default function PaymentTracker({
                     </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(p.id)}
-                  className="btn btn-ghost btn-xs btn-circle text-error"
-                  title="Supprimer"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <Link
+                    href={`/receipt/${p.id}`}
+                    className="btn btn-ghost btn-xs btn-circle text-info"
+                    title="Générer / Télécharger le Reçu PDF"
+                  >
+                    <Receipt className="h-3.5 w-3.5" />
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const msg = buildReceiptWhatsAppMessage({
+                        clientName: clientName || "",
+                        receiptNumber: p.receiptNumber || `REC-${p.id.slice(-6)}`,
+                        invoiceNumber: invoiceNumber || "",
+                        amountFormatted: formatMoney(p.amount, currency),
+                        paymentMethod: p.paymentMethod,
+                        issuerName: issuerName || "FactuPro",
+                        remainingFormatted:
+                          remainingDue > 0
+                            ? formatMoney(remainingDue, currency)
+                            : undefined,
+                      });
+                      const link = generateWhatsAppLink(clientPhone || "", msg);
+                      window.open(link, "_blank", "noopener,noreferrer");
+                    }}
+                    className="btn btn-ghost btn-xs btn-circle text-success"
+                    title="Envoyer la quittance / reçu par WhatsApp"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(p.id)}
+                    className="btn btn-ghost btn-xs btn-circle text-error"
+                    title="Supprimer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

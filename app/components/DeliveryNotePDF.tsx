@@ -5,7 +5,7 @@ import type { CompanyProfile, Invoice } from "@/type";
 import confetti from "canvas-confetti";
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
-import { ArrowDownFromLine, CheckCircle2, Truck } from "lucide-react";
+import { ArrowDownFromLine, CheckCircle2, LayersPlus, Truck } from "lucide-react";
 import { useRef, useState } from "react";
 
 interface Props {
@@ -16,6 +16,8 @@ interface Props {
 export default function DeliveryNotePDF({ invoice, company }: Props) {
   const blRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const brandColor = company?.primaryColor || "#0284c7";
 
   const logoSrc = company?.logoUrl?.startsWith("data:")
     ? company.logoUrl
@@ -161,7 +163,7 @@ export default function DeliveryNotePDF({ invoice, company }: Props) {
                 <p
                   style={{
                     fontSize: 14,
-                    color: "#0284c7",
+                    color: brandColor,
                     fontWeight: 700,
                     margin: 0,
                     lineHeight: 1.3,
@@ -181,7 +183,7 @@ export default function DeliveryNotePDF({ invoice, company }: Props) {
                 </p>
               </div>
 
-              {logoSrc && (
+              {logoSrc ? (
                 <div style={{ maxWidth: 160, maxHeight: 75 }}>
                   <img
                     src={logoSrc}
@@ -194,6 +196,36 @@ export default function DeliveryNotePDF({ invoice, company }: Props) {
                       borderRadius: 0,
                     }}
                   />
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <div
+                    style={{
+                      borderRadius: 0,
+                      backgroundColor: brandColor,
+                      padding: 8,
+                      color: "#ffffff",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 44,
+                      height: 44,
+                    }}
+                  >
+                    <LayersPlus style={{ width: 24, height: 24, color: "#ffffff" }} />
+                  </div>
+                  <span
+                    style={{
+                      marginLeft: 12,
+                      fontSize: 24,
+                      fontWeight: 800,
+                      fontStyle: "italic",
+                      color: "#0f172a",
+                      lineHeight: 1,
+                    }}
+                  >
+                    Factu<span style={{ color: brandColor }}>Pro</span>
+                  </span>
                 </div>
               )}
             </div>
@@ -426,11 +458,13 @@ export default function DeliveryNotePDF({ invoice, company }: Props) {
                 paddingTop: 12,
                 borderTop: "1px solid #e2e8f0",
                 fontSize: 10,
-                color: "#94a3b8",
+                color: "#64748b",
                 textAlign: "center",
               }}
             >
-              Document valant décharge de livraison de marchandises conforme.
+              {company?.footerText
+                ? company.footerText
+                : "Document valant décharge de livraison de marchandises conforme."}
             </div>
           </div>
         </div>

@@ -18,6 +18,8 @@ const emptyForm: CompanyProfileInput = {
   taxId: "",
   iban: "",
   logoUrl: "",
+  primaryColor: "#0284c7",
+  footerText: "",
   paymentTerms: "",
 };
 
@@ -40,6 +42,8 @@ export default function EntreprisePage() {
           taxId: profile.taxId || "",
           iban: profile.iban || "",
           logoUrl: profile.logoUrl || "",
+          primaryColor: profile.primaryColor || "#0284c7",
+          footerText: profile.footerText || "",
           paymentTerms: profile.paymentTerms || "",
         });
       } catch (error) {
@@ -190,6 +194,86 @@ export default function EntreprisePage() {
                 value={form.iban || ""}
                 onChange={(e) => setForm({ ...form, iban: e.target.value })}
               />
+            </label>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="form-control w-full">
+                <span className="label-text mb-1 font-medium">
+                  Couleur principale des PDF / Marque
+                </span>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    className="h-10 w-16 cursor-pointer rounded-lg border border-base-300 bg-base-100 p-1"
+                    value={form.primaryColor || "#0284c7"}
+                    onChange={(e) =>
+                      setForm({ ...form, primaryColor: e.target.value })
+                    }
+                  />
+                  <input
+                    type="text"
+                    className="input input-bordered w-full font-mono text-sm uppercase"
+                    value={form.primaryColor || "#0284c7"}
+                    placeholder="#0284c7"
+                    onChange={(e) =>
+                      setForm({ ...form, primaryColor: e.target.value })
+                    }
+                  />
+                </div>
+              </label>
+
+              <label className="form-control w-full">
+                <span className="label-text mb-1 font-medium">
+                  Raccourcis couleurs
+                </span>
+                <div className="flex items-center gap-2 pt-1">
+                  {[
+                    { label: "Bleu Océan", color: "#0284c7" },
+                    { label: "Indigo", color: "#4f46e5" },
+                    { label: "Émeraude", color: "#059669" },
+                    { label: "Anthracite", color: "#0f172a" },
+                    { label: "Bordeaux", color: "#991b1b" },
+                  ].map((preset) => (
+                    <button
+                      key={preset.color}
+                      type="button"
+                      onClick={() =>
+                        setForm({ ...form, primaryColor: preset.color })
+                      }
+                      className="h-8 w-8 rounded-full border-2 transition-transform hover:scale-110"
+                      style={{
+                        backgroundColor: preset.color,
+                        borderColor:
+                          form.primaryColor === preset.color
+                            ? "#ffffff"
+                            : "transparent",
+                        outline:
+                          form.primaryColor === preset.color
+                            ? `2px solid ${preset.color}`
+                            : "none",
+                      }}
+                      title={preset.label}
+                    />
+                  ))}
+                </div>
+              </label>
+            </div>
+
+            <label className="form-control w-full">
+              <span className="label-text mb-1 font-medium">
+                Pied de page personnalisé des documents (PDF)
+              </span>
+              <input
+                className="input input-bordered w-full"
+                placeholder="Ex. SARL au capital de 1 000 000 FCFA — Registre du Commerce de Lomé N° 123456"
+                value={form.footerText || ""}
+                onChange={(e) =>
+                  setForm({ ...form, footerText: e.target.value })
+                }
+              />
+              <span className="label-text-alt mt-1 text-base-content/60">
+                Ce texte apparaîtra en bas de chaque page de vos factures, devis, avoirs et quittances.
+              </span>
             </label>
 
             <label className="form-control w-full">

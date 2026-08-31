@@ -90,3 +90,36 @@ ${portalUrl || ""}
 
 Restant à votre entière disposition pour tout échange.`;
 }
+
+export function buildReceiptWhatsAppMessage({
+  clientName,
+  receiptNumber,
+  invoiceNumber,
+  amountFormatted,
+  paymentMethod,
+  issuerName,
+  remainingFormatted,
+}: {
+  clientName: string;
+  receiptNumber: string;
+  invoiceNumber: string;
+  amountFormatted: string;
+  paymentMethod: string;
+  issuerName?: string;
+  remainingFormatted?: string;
+}): string {
+  const remainingText =
+    remainingFormatted && remainingFormatted !== "0 FCFA" && remainingFormatted !== "0 XOF"
+      ? `\nMontant restant dû sur facture : *${remainingFormatted}*`
+      : `\nFacture désormais *entièrement soldée et acquittée*.`;
+
+  return `Bonjour ${clientName || ""},
+
+✅ *Reçu d'encaissement - ${receiptNumber}*
+Émetteur : ${issuerName || "FactuPro"}
+Règlement bien reçu : *${amountFormatted}*
+Moyen de paiement : *${paymentMethod}*
+Réf. Facture : *${invoiceNumber}*${remainingText}
+
+Nous vous remercions pour votre confiance et restons à votre disposition !`;
+}

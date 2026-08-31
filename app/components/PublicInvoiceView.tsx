@@ -1,12 +1,13 @@
 "use client";
 
 import { formatDisplayDate, formatMoney } from "@/lib/format";
+import { generateQrCodeDataUrl } from "@/lib/qrcode";
 import type { CompanyProfile, Invoice, Totals } from "@/type";
 import confetti from "canvas-confetti";
 import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { ArrowDownFromLine, LayersPlus } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Props {
   invoice: Invoice;
@@ -17,6 +18,24 @@ interface Props {
 export default function PublicInvoiceView({ invoice, totals, company }: Props) {
   const factureRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+
+  const brandColor = company?.primaryColor || "#0284c7";
+
+  useEffect(() => {
+    const generateQR = async () => {
+      const origin =
+        typeof window !== "undefined"
+          ? window.location.origin
+          : "https://factupro.tg";
+      const targetUrl = invoice.publicToken
+        ? `${origin}/view/invoice/${invoice.publicToken}`
+        : `${origin}/invoice/${invoice.id}`;
+      const url = await generateQrCodeDataUrl(targetUrl, { width: 140, margin: 1 });
+      setQrCodeUrl(url);
+    };
+    void generateQR();
+  }, [invoice.id, invoice.publicToken]);
 
   const logoSrc = company?.logoUrl?.startsWith("data:")
     ? company.logoUrl
@@ -168,12 +187,14 @@ export default function PublicInvoiceView({ invoice, totals, company }: Props) {
                     <div
                       style={{
                         borderRadius: 0,
-                        backgroundColor: "#0284c7",
+                        backgroundColor: brandColor,
                         padding: 8,
                         color: "#ffffff",
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        width: 44,
+                        height: 44,
                       }}
                     >
                       <LayersPlus style={{ width: 24, height: 24, color: "#ffffff" }} />
@@ -189,7 +210,7 @@ export default function PublicInvoiceView({ invoice, totals, company }: Props) {
                       lineHeight: 1,
                     }}
                   >
-                    Factu<span style={{ color: "#0284c7" }}>Pro</span>
+                    Factu<span style={{ color: brandColor }}>Pro</span>
                   </span>
                 </div>
 
@@ -564,7 +585,7 @@ export default function PublicInvoiceView({ invoice, totals, company }: Props) {
                 <div style={{ fontWeight: 800, fontSize: 16 }}>Total TTC</div>
                 <div
                   style={{
-                    backgroundColor: "#0284c7",
+                    backgroundColor: brandColor,
                     color: "#ffffff",
                     fontWeight: 700,
                     fontSize: 15,
@@ -616,8 +637,8 @@ export default function PublicInvoiceView({ invoice, totals, company }: Props) {
             {(company?.paymentTerms || invoice.notes) && (
               <div
                 style={{
-                  marginTop: 28,
-                  paddingTop: 14,
+                  marginTop: 24,
+                  paddingTop: 12,
                   borderTop: "1px solid #e2e8f0",
                   fontSize: 11,
                   color: "#64748b",
@@ -638,6 +659,169 @@ export default function PublicInvoiceView({ invoice, totals, company }: Props) {
                     {invoice.notes}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Bloc QR Code Paiement Mobile Money & En ligne */}
+            {qrCodeUrl && (
+              <div
+                style={{
+                  marginTop: 20,
+                  padding: "12px 14px",
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#f8fafc",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                }}
+              >
+                <div style={{ flex: 1, fontSize: 11, color: "#334155", lineHeight: 1.4 }}>
+                  <div style={{ fontWeight: 800, fontSize: 12, color: "#0f172a", marginBottom: 2 }}>
+                    Paiement Mobile Money & Consultation en ligne
+                  </div>
+                  <div style={{ color: "#64748b" }}>
+                    Scannez ce QR Code avec votre smartphone pour régler instantanément via <strong>Mixx by Yas</strong> ou <strong>Moov Money</strong>.
+                  </div>
+                  {(company?.phone || company?.iban) && (
+                    <div style={{ marginTop: 4, fontSize: 10, color: brandColor, fontWeight: 600 }}>
+                      {company?.phone && <span>Tél / Mobile Money : {company.phone}</span>}
+                      {company?.phone && company?.iban && <span> • </span>}
+                      {company?.iban && <span>IBAN : {company.iban}</span>}
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    width: 68,
+                    height: 68,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    padding: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <img
+                    src={qrCodeUrl}
+                    alt="QR Code Facture"
+                    style={{ width: "100%", height: "100%", display: "block" }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Zones d'émargement, signature et cachet */}
+            <div
+              style={{
+                marginTop: 24,
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 20,
+              }}
+            >
+              {/* Emplacement Signature Client */}
+              <div
+                style={{
+                  border: "1px solid #cbd5e1",
+                  padding: "12px 14px",
+                  minHeight: "120px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  backgroundColor: "#ffffff",
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      color: "#0f172a",
+                      letterSpacing: "0.3px",
+                    }}
+                  >
+                    Bon pour accord / Le Client
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                    {invoice.clientName || "Client"}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    borderTop: "1px dashed #cbd5e1",
+                    paddingTop: 6,
+                    fontSize: 10,
+                    color: "#94a3b8",
+                    textAlign: "center",
+                  }}
+                >
+                  Date et Signature du Client
+                </div>
+              </div>
+
+              {/* Emplacement Signature et Cachet Émetteur */}
+              <div
+                style={{
+                  border: "1px solid #cbd5e1",
+                  padding: "12px 14px",
+                  minHeight: "120px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  backgroundColor: "#ffffff",
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      color: "#0f172a",
+                      letterSpacing: "0.3px",
+                    }}
+                  >
+                    Pour l&apos;Émetteur
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                    {company?.name || invoice.issuerName || "L'Émetteur"}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    borderTop: "1px dashed #cbd5e1",
+                    paddingTop: 6,
+                    fontSize: 10,
+                    color: "#94a3b8",
+                    textAlign: "center",
+                  }}
+                >
+                  Date, Cachet et Signature autorisée
+                </div>
+              </div>
+            </div>
+
+            {/* Pied de page personnalisé */}
+            {company?.footerText && (
+              <div
+                style={{
+                  marginTop: 28,
+                  paddingTop: 12,
+                  borderTop: "1px solid #e2e8f0",
+                  fontSize: 10,
+                  color: "#64748b",
+                  textAlign: "center",
+                  lineHeight: 1.4,
+                }}
+              >
+                {company.footerText}
               </div>
             )}
           </div>

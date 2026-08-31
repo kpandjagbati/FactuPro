@@ -111,6 +111,12 @@ export async function updateCompanyProfile(data: CompanyProfileInput) {
       taxId: data.taxId || null,
       iban: data.iban || null,
       ...(data.logoUrl !== undefined ? { logoUrl: data.logoUrl } : {}),
+      ...(data.primaryColor !== undefined
+        ? { primaryColor: data.primaryColor || "#0284c7" }
+        : {}),
+      ...(data.footerText !== undefined
+        ? { footerText: data.footerText?.trim() || null }
+        : {}),
       ...(data.paymentTerms !== undefined
         ? { paymentTerms: data.paymentTerms || null }
         : {}),
@@ -124,6 +130,8 @@ export async function updateCompanyProfile(data: CompanyProfileInput) {
       taxId: data.taxId || null,
       iban: data.iban || null,
       logoUrl: data.logoUrl || null,
+      primaryColor: data.primaryColor || "#0284c7",
+      footerText: data.footerText?.trim() || null,
       paymentTerms: data.paymentTerms || null,
     },
   });

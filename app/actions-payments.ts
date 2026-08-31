@@ -11,7 +11,9 @@ async function requireDbUser() {
   const user = await prisma.user.findUnique({
     where: { clerkId: userId },
     include: {
-      organization: true,
+      organization: {
+        include: { companyProfile: true },
+      },
     },
   });
 
@@ -51,6 +53,14 @@ export async function addPayment(
 
   if (!invoice) throw new Error("Facture introuvable");
 
+  const year = new Date().getFullYear();
+  const org = await prisma.organization.update({
+    where: { id: user.organizationId },
+    data: { receiptCounter: { increment: 1 } },
+  });
+
+  const receiptNumber = `REC-${year}-${String(org.receiptCounter).padStart(4, "0")}`;
+
   const newPayment = await prisma.payment.create({
     data: {
       invoiceId,
@@ -58,6 +68,7 @@ export async function addPayment(
       paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
       paymentMethod: data.paymentMethod || "Virement",
       reference: data.reference?.trim() || null,
+      receiptNumber,
       notes: data.notes?.trim() || null,
     },
   });
@@ -122,4 +133,68 @@ export async function deletePayment(
       data: { status: "SENT" },
     });
   }
+}
+
+export async function getPaymentReceiptData(paymentId: string) {
+  const user = await requireDbUser();
+
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: {
+      invoice: {
+        include: {
+          lines: true,
+          client: true,
+          payments: true,
+          organization: {
+            include: { companyProfile: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!payment || payment.invoice.organizationId !== user.organizationId) {
+    throw new Error("Reçu introuvable");
+  }
+
+  // Si pas de numéro de reçu attribué (créé avant la migration), en assigner un
+  if (!payment.receiptNumber) {
+    const year = new Date().getFullYear();
+    const org = await prisma.organization.update({
+      where: { id: user.organizationId },
+      data: { receiptCounter: { increment: 1 } },
+    });
+    const receiptNumber = `REC-${year}-${String(org.receiptCounter).padStart(4, "0")}`;
+    payment.receiptNumber = receiptNumber;
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { receiptNumber },
+    });
+  }
+
+  const invoice = payment.invoice;
+  const totalHT = invoice.lines.reduce(
+    (acc, l) => acc + l.quantity * l.unitPrice,
+    0,
+  );
+  const totalVAT = invoice.vatActive ? totalHT * (invoice.vatRate / 100) : 0;
+  const totalTTC = totalHT + totalVAT;
+
+  const totalPaidUntilNow = invoice.payments
+    .filter((p) => new Date(p.paymentDate) <= new Date(payment.paymentDate))
+    .reduce((acc, p) => acc + p.amount, 0);
+
+  const remainingDue = Math.max(0, totalTTC - totalPaidUntilNow);
+
+  return {
+    payment,
+    invoice,
+    company: invoice.organization.companyProfile,
+    totalHT,
+    totalVAT,
+    totalTTC,
+    totalPaidUntilNow,
+    remainingDue,
+  };
 }

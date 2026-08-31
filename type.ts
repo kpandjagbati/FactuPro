@@ -58,6 +58,8 @@ export type CompanyProfileInput = {
   taxId?: string | null;
   iban?: string | null;
   logoUrl?: string | null;
+  primaryColor?: string | null;
+  footerText?: string | null;
   paymentTerms?: string | null;
 };
 

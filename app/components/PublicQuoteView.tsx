@@ -39,6 +39,8 @@ export default function PublicQuoteView({
   const quoteRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const brandColor = company?.primaryColor || "#0284c7";
+
   const [signModalOpen, setSignModalOpen] = useState(false);
   const [signerName, setSignerName] = useState(quote.clientName || "");
   const [signatureData, setSignatureData] = useState("");
@@ -323,12 +325,14 @@ export default function PublicQuoteView({
                     <div
                       style={{
                         borderRadius: 0,
-                        backgroundColor: "#0284c7",
+                        backgroundColor: brandColor,
                         padding: 8,
                         color: "#ffffff",
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        width: 44,
+                        height: 44,
                       }}
                     >
                       <LayersPlus style={{ width: 24, height: 24, color: "#ffffff" }} />
@@ -344,7 +348,7 @@ export default function PublicQuoteView({
                       lineHeight: 1,
                     }}
                   >
-                    Factu<span style={{ color: "#0284c7" }}>Pro</span>
+                    Factu<span style={{ color: brandColor }}>Pro</span>
                   </span>
                 </div>
 
@@ -692,7 +696,7 @@ export default function PublicQuoteView({
                 <div style={{ fontWeight: 800, fontSize: 16 }}>Total TTC</div>
                 <div
                   style={{
-                    backgroundColor: "#0284c7",
+                    backgroundColor: brandColor,
                     color: "#ffffff",
                     fontWeight: 700,
                     fontSize: 15,
@@ -721,6 +725,23 @@ export default function PublicQuoteView({
               >
                 <strong style={{ color: "#334155" }}>Notes & Modalités : </strong>
                 {quote.notes}
+              </div>
+            )}
+
+            {/* Pied de page personnalisé */}
+            {company?.footerText && (
+              <div
+                style={{
+                  marginTop: 28,
+                  paddingTop: 12,
+                  borderTop: "1px solid #e2e8f0",
+                  fontSize: 10,
+                  color: "#64748b",
+                  textAlign: "center",
+                  lineHeight: 1.4,
+                }}
+              >
+                {company.footerText}
               </div>
             )}
 

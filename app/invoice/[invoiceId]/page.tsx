@@ -422,6 +422,12 @@ export default function InvoiceDetailPage() {
               totalTTC={totals.totalTTC}
               publicToken={invoice.publicToken}
               viewedAt={invoice.viewedAt}
+              invoiceNumber={invoice.number}
+              clientName={invoice.clientName}
+              clientPhone={
+                clients.find((c) => c.id === invoice.clientId)?.phone || null
+              }
+              issuerName={invoice.issuerName || company?.name}
               onPaymentUpdated={fetchInvoice}
             />
 

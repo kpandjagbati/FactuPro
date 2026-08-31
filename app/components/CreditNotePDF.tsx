@@ -18,6 +18,8 @@ export default function CreditNotePDF({ creditNote, totals, company }: Props) {
   const avoirRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const brandColor = company?.primaryColor || "#0284c7";
+
   const logoSrc = company?.logoUrl?.startsWith("data:")
     ? company.logoUrl
     : company?.logoUrl?.split("?")[0];
@@ -166,12 +168,14 @@ export default function CreditNotePDF({ creditNote, totals, company }: Props) {
                     <div
                       style={{
                         borderRadius: 0,
-                        backgroundColor: "#dc2626",
+                        backgroundColor: brandColor,
                         padding: 8,
                         color: "#ffffff",
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        width: 44,
+                        height: 44,
                       }}
                     >
                       <LayersPlus style={{ width: 24, height: 24, color: "#ffffff" }} />
@@ -187,7 +191,7 @@ export default function CreditNotePDF({ creditNote, totals, company }: Props) {
                       lineHeight: 1,
                     }}
                   >
-                    Factu<span style={{ color: "#dc2626" }}>Pro</span>
+                    Factu<span style={{ color: brandColor }}>Pro</span>
                   </span>
                 </div>
 
@@ -511,6 +515,23 @@ export default function CreditNotePDF({ creditNote, totals, company }: Props) {
               >
                 <strong style={{ color: "#334155" }}>Notes : </strong>
                 {creditNote.notes}
+              </div>
+            )}
+
+            {/* Pied de page personnalisé */}
+            {company?.footerText && (
+              <div
+                style={{
+                  marginTop: 28,
+                  paddingTop: 12,
+                  borderTop: "1px solid #e2e8f0",
+                  fontSize: 10,
+                  color: "#64748b",
+                  textAlign: "center",
+                  lineHeight: 1.4,
+                }}
+              >
+                {company.footerText}
               </div>
             )}
           </div>

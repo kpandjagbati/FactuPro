@@ -47,6 +47,7 @@ model Organization {
   invoiceCounter     Int                 @default(0)
   quoteCounter       Int                 @default(0)
   creditNoteCounter  Int                 @default(0)
+  receiptCounter     Int                 @default(0)
   currency           String              @default("XOF")
   users              User[]
   companyProfile     CompanyProfile?
@@ -72,6 +73,8 @@ model CompanyProfile {
   taxId          String?
   iban           String?
   logoUrl        String?
+  primaryColor   String?      @default("#0284c7")
+  footerText     String?
   paymentTerms   String?      @default("Paiement à 30 jours à compter de la date de facture.")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -191,6 +194,7 @@ model Payment {
   paymentDate   DateTime @default(now())
   paymentMethod String   @default("Virement")
   reference     String?
+  receiptNumber String?
   notes         String?
   createdAt     DateTime @default(now())
 
